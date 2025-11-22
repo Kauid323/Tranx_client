@@ -71,7 +71,13 @@ class HomeActivity : ComponentActivity() {
                         startActivity(intent)
                     },
                     onCreatePostClick = {
-                        startActivity(Intent(this, CreatePostActivity::class.java))
+                        val intent = Intent(this, CreatePostActivity::class.java)
+                        // 传递当前选中的板块ID
+                        val currentBoardId = homeViewModel.currentBoardId.value
+                        if (currentBoardId != null) {
+                            intent.putExtra("BOARD_ID", currentBoardId)
+                        }
+                        startActivity(intent)
                     },
                     onLogout = {
                         val intent = Intent(this, LoginActivity::class.java)

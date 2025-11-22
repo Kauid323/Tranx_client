@@ -130,42 +130,44 @@ fun PostDetailScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(8.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceAround,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 点赞
-                        IconButton(onClick = { viewModel.likePost(postId) }) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    Icons.Default.ThumbUp,
-                                    contentDescription = "点赞",
-                                    tint = if (isLiked) MaterialTheme.colorScheme.primary 
-                                        else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "点赞",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
+                        // 点赞按钮 - 显示点赞数
+                        TextButton(onClick = { viewModel.likePost(postId) }) {
+                            Icon(
+                                Icons.Default.ThumbUp,
+                                contentDescription = "点赞",
+                                tint = if (isLiked) MaterialTheme.colorScheme.primary 
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = state.post.likes.toString(),
+                                color = if (isLiked) MaterialTheme.colorScheme.primary 
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
 
-                        // 收藏
-                        IconButton(onClick = { showFavoriteSheet = true }) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    Icons.Default.Star,
-                                    contentDescription = "收藏"
-                                )
-                                Text(
-                                    text = "收藏",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
+                        // 收藏按钮 - 显示收藏数
+                        TextButton(onClick = { showFavoriteSheet = true }) {
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = "收藏",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = state.post.favorites.toString(),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
 
-                        // 投币
-                        IconButton(onClick = {
+                        // 投币按钮 - 显示投币数
+                        TextButton(onClick = {
                             viewModel.coinPost(postId, 1,
                                 onSuccess = {
                                     Toast.makeText(context, "投币成功", Toast.LENGTH_SHORT).show()
@@ -175,33 +177,29 @@ fun PostDetailScreen(
                                 }
                             )
                         }) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    Icons.Default.MonetizationOn,
-                                    contentDescription = "投币"
-                                )
-                                Text(
-                                    text = "投币",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
+                            Icon(
+                                Icons.Default.MonetizationOn,
+                                contentDescription = "投币",
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (state.post.coins > 0) state.post.coins.toString() else "投币",
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
                         }
 
-                        // 评论
-                        IconButton(onClick = { 
-                            replyToComment = null
-                            showCommentDialog = true 
-                        }) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    Icons.Default.Comment,
-                                    contentDescription = "评论"
-                                )
-                                Text(
-                                    text = "评论",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
+                        FilledTonalButton(
+                            onClick = { 
+                                replyToComment = null
+                                showCommentDialog = true 
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Comment, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("发表评论")
                         }
                     }
                 }
@@ -297,7 +295,9 @@ fun PostDetailScreen(
                                             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                                         }
                                     )
-                                }
+                                },
+                                viewModel = viewModel,
+                                postId = postId
                             )
                             Divider(modifier = Modifier.padding(horizontal = 16.dp))
                         }
@@ -499,8 +499,11 @@ private fun CommentItem(
     onLike: () -> Unit,
     onReply: () -> Unit,
     onShowReplies: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    viewModel: PostDetailViewModel,
+    postId: Int
 ) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -614,6 +617,29 @@ private fun CommentItem(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("${comment.likes ?: 0}")
+                }
+
+                TextButton(onClick = {
+                    viewModel.coinComment(comment.id, postId, 1,
+                        onSuccess = {
+                            Toast.makeText(context, "投币成功", Toast.LENGTH_SHORT).show()
+                        },
+                        onError = { message ->
+                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }) {
+                    Icon(
+                        Icons.Default.MonetizationOn,
+                        contentDescription = "投币",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.tertiary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if ((comment.coins ?: 0) > 0) (comment.coins ?: 0).toString() else "投币",
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
                 }
 
                 TextButton(onClick = onReply) {

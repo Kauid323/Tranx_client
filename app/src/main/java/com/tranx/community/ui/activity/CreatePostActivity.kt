@@ -7,10 +7,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tranx.community.TranxApp
@@ -24,6 +27,8 @@ class CreatePostActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        val selectedBoardId = intent.getIntExtra("BOARD_ID", 1) // 默认为综合讨论板块
         
         setContent {
             val prefsManager = TranxApp.instance.preferencesManager
@@ -43,6 +48,7 @@ class CreatePostActivity : ComponentActivity() {
                 primaryColor = if (useDynamicColor) null else primaryColor
             ) {
                 CreatePostScreen(
+                    selectedBoardId = selectedBoardId,
                     onBackClick = { finish() },
                     onPostCreated = { finish() }
                 )
@@ -54,13 +60,34 @@ class CreatePostActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreatePostScreen(
+    selectedBoardId: Int,
     onBackClick: () -> Unit,
     onPostCreated: () -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
+    var boardId by remember { mutableStateOf(selectedBoardId) }
     var isLoading by remember { mutableStateOf(false) }
+    var boards by remember { mutableStateOf<List<com.tranx.community.data.model.Board>>(emptyList()) }
+    var showBoardSelector by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    // 加载板块列表
+    LaunchedEffect(Unit) {
+        try {
+            val prefsManager = TranxApp.instance.preferencesManager
+            val token = prefsManager.getToken()
+            if (token != null) {
+                val apiService = RetrofitClient.getApiService()
+                val response = apiService.getBoardList(token)
+                if (response.code == 200 && response.data != null) {
+                    boards = response.data
+                }
+            }
+        } catch (e: Exception) {
+            // 处理错误
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -85,7 +112,7 @@ fun CreatePostScreen(
                                         val response = apiService.createPost(
                                             token,
                                             CreatePostRequest(
-                                                boardId = 1, // 默认板块
+                                                boardId = boardId,
                                                 title = title,
                                                 content = content
                                             )
@@ -113,13 +140,29 @@ fun CreatePostScreen(
                 }
             )
         }
-    ) { paddingValues ->
+        ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
+            // 板块选择器
+            OutlinedTextField(
+                value = boards.find { it.id == boardId }?.name ?: "选择分区",
+                onValueChange = { },
+                label = { Text("发布分区") },
+                modifier = Modifier.fillMaxWidth(),
+                readOnly = true,
+                trailingIcon = {
+                    IconButton(onClick = { showBoardSelector = true }) {
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = "选择分区")
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -142,6 +185,49 @@ fun CreatePostScreen(
                 maxLines = 20
             )
         }
+    }
+
+    // 板块选择对话框
+    if (showBoardSelector && boards.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { showBoardSelector = false },
+            title = { Text("选择发布分区") },
+            text = {
+                LazyColumn {
+                    items(boards) { board ->
+                        TextButton(
+                            onClick = {
+                                boardId = board.id
+                                showBoardSelector = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.Start
+                            ) {
+                                Text(
+                                    text = board.name,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                if (!board.description.isNullOrEmpty()) {
+                                    Text(
+                                        text = board.description,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBoardSelector = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
 
