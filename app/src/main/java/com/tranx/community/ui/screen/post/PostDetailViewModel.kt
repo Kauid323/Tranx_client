@@ -51,7 +51,7 @@ class PostDetailViewModel : ViewModel() {
                         postId = postId
                     )
                     if (commentsResponse.code == 200 && commentsResponse.data != null) {
-                        commentsResponse.data.list
+                        commentsResponse.data.list ?: emptyList()  // 处理list为null的情况
                     } else {
                         emptyList()
                     }

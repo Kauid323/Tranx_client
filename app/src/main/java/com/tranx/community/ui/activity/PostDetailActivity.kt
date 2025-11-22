@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -101,7 +102,10 @@ fun PostDetailScreen(
         },
         bottomBar = {
             if (uiState is PostDetailUiState.Success) {
-                Surface(tonalElevation = 3.dp) {
+                Surface(
+                    tonalElevation = 3.dp,
+                    modifier = Modifier.navigationBarsPadding()
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

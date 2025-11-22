@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
+import com.tranx.community.ui.screen.board.BoardListScreen
+import com.tranx.community.ui.screen.board.BoardListViewModel
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +38,7 @@ import com.tranx.community.ui.theme.TranxCommunityTheme
 class HomeActivity : ComponentActivity() {
     private val homeViewModel: HomeViewModel by viewModels()
     private val profileViewModel: com.tranx.community.ui.screen.profile.ProfileViewModel by viewModels()
+    private val boardListViewModel: BoardListViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,6 +64,7 @@ class HomeActivity : ComponentActivity() {
                 MainScreen(
                     homeViewModel = homeViewModel,
                     profileViewModel = profileViewModel,
+                    boardListViewModel = boardListViewModel,
                     onPostClick = { postId ->
                         val intent = Intent(this, PostDetailActivity::class.java)
                         intent.putExtra("POST_ID", postId)
@@ -85,6 +89,7 @@ class HomeActivity : ComponentActivity() {
 fun MainScreen(
     homeViewModel: HomeViewModel,
     profileViewModel: com.tranx.community.ui.screen.profile.ProfileViewModel,
+    boardListViewModel: BoardListViewModel,
     onPostClick: (Int) -> Unit,
     onCreatePostClick: () -> Unit,
     onLogout: () -> Unit
@@ -108,13 +113,24 @@ fun MainScreen(
                 NavigationBarItem(
                     icon = {
                         Icon(
-                            if (selectedTab == 1) Icons.Filled.Person else Icons.Outlined.Person,
+                            if (selectedTab == 1) Icons.Filled.Dashboard else Icons.Outlined.Dashboard,
+                            contentDescription = "分区"
+                        )
+                    },
+                    label = { Text("分区") },
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 }
+                )
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            if (selectedTab == 2) Icons.Filled.Person else Icons.Outlined.Person,
                             contentDescription = "我的"
                         )
                     },
                     label = { Text("我的") },
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 }
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 }
                 )
             }
         }
@@ -126,7 +142,15 @@ fun MainScreen(
                 onCreatePostClick = onCreatePostClick,
                 paddingValues = paddingValues
             )
-            1 -> ProfileScreen(
+            1 -> BoardListScreen(
+                viewModel = boardListViewModel,
+                paddingValues = paddingValues,
+                onBoardClick = { boardId ->
+                    selectedTab = 0  // 切换到首页
+                    homeViewModel.selectBoard(boardId)  // 选择对应的板块
+                }
+            )
+            2 -> ProfileScreen(
                 viewModel = profileViewModel,
                 onLogout = onLogout,
                 paddingValues = paddingValues
