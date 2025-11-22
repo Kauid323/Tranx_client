@@ -5,12 +5,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -28,12 +25,18 @@ fun BoardListScreen(
     viewModel: BoardListViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showCreateDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier.padding(paddingValues),
         topBar = {
             TopAppBar(
-                title = { Text("分区") }
+                title = { Text("分区") },
+                actions = {
+                    IconButton(onClick = { showCreateDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = "创建分区")
+                    }
+                }
             )
         }
     ) { innerPadding ->
@@ -84,6 +87,72 @@ fun BoardListScreen(
             }
         }
     }
+
+    // 创建分区对话框
+    if (showCreateDialog) {
+        CreateBoardDialog(
+            onDismiss = { showCreateDialog = false },
+            onConfirm = { name, description ->
+                viewModel.createBoard(
+                    name = name,
+                    description = description,
+                    onSuccess = { 
+                        showCreateDialog = false 
+                    },
+                    onError = { /* TODO: 显示错误 */ }
+                )
+            }
+        )
+    }
+}
+
+@Composable
+private fun CreateBoardDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, String?) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("创建分区") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("分区名称") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("分区描述（可选）") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (name.isNotBlank()) {
+                        onConfirm(name, description.ifBlank { null })
+                    }
+                },
+                enabled = name.isNotBlank()
+            ) {
+                Text("创建")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
 }
 
 @Composable

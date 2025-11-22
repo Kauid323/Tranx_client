@@ -4,9 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tranx.community.TranxApp
 import com.tranx.community.data.api.RetrofitClient
-import com.tranx.community.data.model.Comment
-import com.tranx.community.data.model.CreateCommentRequest
-import com.tranx.community.data.model.Post
+import com.tranx.community.data.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +27,12 @@ class PostDetailViewModel : ViewModel() {
 
     private val _isFavorited = MutableStateFlow(false)
     val isFavorited: StateFlow<Boolean> = _isFavorited.asStateFlow()
+
+    private val _folders = MutableStateFlow<List<Folder>>(emptyList())
+    val folders: StateFlow<List<Folder>> = _folders.asStateFlow()
+
+    private val _commentReplies = MutableStateFlow<Map<Int, List<Comment>>>(emptyMap())
+    val commentReplies: StateFlow<Map<Int, List<Comment>>> = _commentReplies.asStateFlow()
 
     fun loadPost(postId: Int) {
         viewModelScope.launch {
@@ -145,19 +149,138 @@ class PostDetailViewModel : ViewModel() {
         }
     }
 
-    fun addComment(postId: Int, content: String, onSuccess: () -> Unit) {
+    fun addComment(postId: Int, content: String, parentId: Int? = null, onSuccess: () -> Unit) {
         viewModelScope.launch {
             try {
                 val token = prefsManager.getToken() ?: return@launch
                 val apiService = RetrofitClient.getApiService()
                 val response = apiService.createComment(
                     token,
-                    CreateCommentRequest(postId, content)
+                    CreateCommentRequest(postId, parentId, content)
                 )
 
                 if (response.code == 200) {
                     onSuccess()
+                    if (parentId != null) {
+                        loadCommentReplies(parentId)
+                    } else {
+                        loadPost(postId)
+                    }
+                }
+            } catch (e: Exception) {
+                // 处理错误
+            }
+        }
+    }
+
+    fun deletePost(postId: Int, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val token = prefsManager.getToken() ?: return@launch
+                val apiService = RetrofitClient.getApiService()
+                val response = apiService.deletePost(token, postId)
+                
+                if (response.code == 200) {
+                    onSuccess()
+                } else {
+                    onError(response.message)
+                }
+            } catch (e: Exception) {
+                onError("删除失败: ${e.message}")
+            }
+        }
+    }
+
+    fun deleteComment(commentId: Int, postId: Int, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val token = prefsManager.getToken() ?: return@launch
+                val apiService = RetrofitClient.getApiService()
+                val response = apiService.deleteComment(token, commentId)
+                
+                if (response.code == 200) {
+                    onSuccess()
                     loadPost(postId)
+                } else {
+                    onError(response.message)
+                }
+            } catch (e: Exception) {
+                onError("删除失败: ${e.message}")
+            }
+        }
+    }
+
+    fun loadFolders() {
+        viewModelScope.launch {
+            try {
+                val token = prefsManager.getToken() ?: return@launch
+                val apiService = RetrofitClient.getApiService()
+                val response = apiService.getMyFolders(token)
+                
+                if (response.code == 200 && response.data != null) {
+                    _folders.value = response.data
+                }
+            } catch (e: Exception) {
+                // 处理错误
+            }
+        }
+    }
+
+    fun createFolder(name: String, description: String?, isPublic: Boolean, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val token = prefsManager.getToken() ?: return@launch
+                val apiService = RetrofitClient.getApiService()
+                val response = apiService.createFolder(
+                    token,
+                    CreateFolderRequest(name, description, isPublic)
+                )
+                
+                if (response.code == 200) {
+                    onSuccess()
+                    loadFolders()
+                } else {
+                    onError(response.message)
+                }
+            } catch (e: Exception) {
+                onError("创建失败: ${e.message}")
+            }
+        }
+    }
+
+    fun addPostToFolder(postId: Int, folderId: Int, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val token = prefsManager.getToken() ?: return@launch
+                val apiService = RetrofitClient.getApiService()
+                val response = apiService.addPostToFolder(
+                    token,
+                    folderId,
+                    mapOf("post_id" to postId)
+                )
+                
+                if (response.code == 200) {
+                    onSuccess()
+                } else {
+                    onError(response.message)
+                }
+            } catch (e: Exception) {
+                onError("收藏失败: ${e.message}")
+            }
+        }
+    }
+
+    fun loadCommentReplies(commentId: Int) {
+        viewModelScope.launch {
+            try {
+                val token = prefsManager.getToken() ?: return@launch
+                val apiService = RetrofitClient.getApiService()
+                val response = apiService.getCommentReplies(token, commentId)
+                
+                if (response.code == 200 && response.data != null) {
+                    val currentReplies = _commentReplies.value.toMutableMap()
+                    currentReplies[commentId] = response.data.list ?: emptyList()
+                    _commentReplies.value = currentReplies
                 }
             } catch (e: Exception) {
                 // 处理错误

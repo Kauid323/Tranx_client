@@ -11,19 +11,24 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tranx.community.TranxApp
 import com.tranx.community.data.local.PreferencesManager
 import com.tranx.community.data.model.Comment
 import com.tranx.community.data.model.Post
+import com.tranx.community.data.model.Folder
 import com.tranx.community.ui.screen.post.PostDetailUiState
 import com.tranx.community.ui.screen.post.PostDetailViewModel
 import com.tranx.community.ui.theme.TranxCommunityTheme
@@ -61,7 +66,7 @@ class PostDetailActivity : ComponentActivity() {
                 PostDetailScreen(
                     postId = postId,
                     viewModel = viewModel,
-                    onBackClick = { finish() }
+                    onBack = { finish() }
                 )
             }
         }
@@ -73,20 +78,24 @@ class PostDetailActivity : ComponentActivity() {
 fun PostDetailScreen(
     postId: Int,
     viewModel: PostDetailViewModel,
-    onBackClick: () -> Unit
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val isLiked by viewModel.isLiked.collectAsState()
-    val isFavorited by viewModel.isFavorited.collectAsState()
-
-    var commentText by remember { mutableStateOf("") }
+    val folders by viewModel.folders.collectAsState()
+    val commentReplies by viewModel.commentReplies.collectAsState()
+    
     var showCommentDialog by remember { mutableStateOf(false) }
-    var showCoinDialog by remember { mutableStateOf(false) }
-    var showCommentCoinDialog by remember { mutableStateOf<Int?>(null) }
+    var showFavoriteSheet by remember { mutableStateOf(false) }
+    var showRepliesSheet by remember { mutableStateOf<Comment?>(null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var commentText by remember { mutableStateOf("") }
+    var replyToComment by remember { mutableStateOf<Comment?>(null) }
 
     LaunchedEffect(postId) {
         viewModel.loadPost(postId)
+        viewModel.loadFolders()
     }
 
     Scaffold(
@@ -94,8 +103,19 @@ fun PostDetailScreen(
             TopAppBar(
                 title = { Text("帖子详情") },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    if (uiState is PostDetailUiState.Success) {
+                        // 只有作者才能删除帖子
+                        val currentUser = TranxApp.instance.preferencesManager.getToken()
+                        if (currentUser != null) {
+                            IconButton(onClick = { showDeleteDialog = true }) {
+                                Icon(Icons.Default.Delete, contentDescription = "删除帖子")
+                            }
+                        }
                     }
                 }
             )
@@ -117,67 +137,70 @@ fun PostDetailScreen(
                         IconButton(onClick = { viewModel.likePost(postId) }) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
-                                    if (isLiked) Icons.Filled.ThumbUp else Icons.Filled.ThumbUpOffAlt,
+                                    if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                                     contentDescription = "点赞",
                                     tint = if (isLiked) MaterialTheme.colorScheme.primary 
                                         else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = "点赞",
-                                    style = MaterialTheme.typography.labelSmall
+                                    style = MaterialTheme.typography.bodySmall
                                 )
                             }
                         }
 
                         // 收藏
-                        IconButton(onClick = {
-                            viewModel.favoritePost(
-                                postId = postId,
-                                onSuccess = {
-                                    Toast.makeText(context, "收藏成功", Toast.LENGTH_SHORT).show()
-                                },
-                                onError = { msg ->
-                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                }
-                            )
-                        }) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        IconButton(onClick = { showFavoriteSheet = true }) {
+                            Column(horizontalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    if (isFavorited) Icons.Filled.Star else Icons.Filled.StarBorder,
-                                    contentDescription = "收藏",
-                                    tint = if (isFavorited) MaterialTheme.colorScheme.tertiary
-                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                    Icons.Default.Star,
+                                    contentDescription = "收藏"
                                 )
                                 Text(
                                     text = "收藏",
-                                    style = MaterialTheme.typography.labelSmall
+                                    style = MaterialTheme.typography.bodySmall
                                 )
                             }
                         }
 
                         // 投币
-                        IconButton(onClick = { showCoinDialog = true }) {
+                        IconButton(onClick = {
+                            viewModel.coinPost(postId, 1,
+                                onSuccess = {
+                                    Toast.makeText(context, "投币成功", Toast.LENGTH_SHORT).show()
+                                },
+                                onError = { message ->
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
                                     Icons.Default.MonetizationOn,
-                                    contentDescription = "投币",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    contentDescription = "投币"
                                 )
                                 Text(
                                     text = "投币",
-                                    style = MaterialTheme.typography.labelSmall
+                                    style = MaterialTheme.typography.bodySmall
                                 )
                             }
                         }
 
-                        // 发表评论
-                        FilledTonalButton(
-                            onClick = { showCommentDialog = true },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Comment, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("发表评论")
+                        // 评论
+                        IconButton(onClick = { 
+                            replyToComment = null
+                            showCommentDialog = true 
+                        }) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Default.Comment,
+                                    contentDescription = "评论"
+                                )
+                                Text(
+                                    text = "评论",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
                     }
                 }
@@ -254,8 +277,26 @@ fun PostDetailScreen(
                         items(state.comments) { comment ->
                             CommentItem(
                                 comment = comment,
+                                replies = commentReplies[comment.id] ?: emptyList(),
                                 onLike = { viewModel.likeComment(comment.id, postId) },
-                                onCoin = { showCommentCoinDialog = comment.id }
+                                onReply = { 
+                                    replyToComment = comment
+                                    showCommentDialog = true 
+                                },
+                                onShowReplies = { 
+                                    viewModel.loadCommentReplies(comment.id)
+                                    showRepliesSheet = comment 
+                                },
+                                onDelete = {
+                                    viewModel.deleteComment(comment.id, postId,
+                                        onSuccess = {
+                                            Toast.makeText(context, "删除成功", Toast.LENGTH_SHORT).show()
+                                        },
+                                        onError = { message ->
+                                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                }
                             )
                             Divider(modifier = Modifier.padding(horizontal = 16.dp))
                         }
@@ -268,26 +309,42 @@ fun PostDetailScreen(
     // 评论对话框
     if (showCommentDialog) {
         AlertDialog(
-            onDismissRequest = { showCommentDialog = false },
-            title = { Text("发表评论") },
+            onDismissRequest = { 
+                showCommentDialog = false
+                replyToComment = null
+            },
+            title = { 
+                Text(if (replyToComment != null) "回复评论" else "发表评论") 
+            },
             text = {
-                OutlinedTextField(
-                    value = commentText,
-                    onValueChange = { commentText = it },
-                    placeholder = { Text("请输入评论内容...") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp),
-                    maxLines = 5
-                )
+                Column {
+                    if (replyToComment != null) {
+                        Text(
+                            text = "回复 @${replyToComment!!.username ?: "匿名用户"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    OutlinedTextField(
+                        value = commentText,
+                        onValueChange = { commentText = it },
+                        placeholder = { Text("请输入评论内容...") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp),
+                        maxLines = 5
+                    )
+                }
             },
             confirmButton = {
                 Button(
                     onClick = {
                         if (commentText.isNotBlank()) {
-                            viewModel.addComment(postId, commentText) {
+                            viewModel.addComment(postId, commentText, replyToComment?.id) {
                                 commentText = ""
                                 showCommentDialog = false
+                                replyToComment = null
                             }
                         }
                     },
@@ -297,113 +354,90 @@ fun PostDetailScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showCommentDialog = false }) {
+                TextButton(onClick = { 
+                    showCommentDialog = false
+                    replyToComment = null
+                }) {
                     Text("取消")
                 }
             }
         )
     }
 
-    // 投币对话框（帖子）
-    if (showCoinDialog) {
-        CoinDialog(
-            onDismiss = { showCoinDialog = false },
-            onConfirm = { amount ->
-                viewModel.coinPost(
-                    postId = postId,
-                    amount = amount,
+    // 收藏底部表单
+    if (showFavoriteSheet) {
+        FavoriteBottomSheet(
+            folders = folders,
+            onDismiss = { showFavoriteSheet = false },
+            onCreateFolder = { name, description, isPublic ->
+                viewModel.createFolder(name, description, isPublic,
                     onSuccess = {
-                        Toast.makeText(context, "投币成功", Toast.LENGTH_SHORT).show()
-                        showCoinDialog = false
+                        Toast.makeText(context, "创建收藏夹成功", Toast.LENGTH_SHORT).show()
                     },
-                    onError = { msg ->
-                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                    onError = { message ->
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                )
+            },
+            onSelectFolder = { folderId ->
+                viewModel.addPostToFolder(postId, folderId,
+                    onSuccess = {
+                        showFavoriteSheet = false
+                        Toast.makeText(context, "收藏成功", Toast.LENGTH_SHORT).show()
+                    },
+                    onError = { message ->
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     }
                 )
             }
         )
     }
 
-    // 投币对话框（评论）
-    showCommentCoinDialog?.let { commentId ->
-        CoinDialog(
-            onDismiss = { showCommentCoinDialog = null },
-            onConfirm = { amount ->
-                viewModel.coinComment(
-                    commentId = commentId,
-                    postId = postId,
-                    amount = amount,
-                    onSuccess = {
-                        Toast.makeText(context, "投币成功", Toast.LENGTH_SHORT).show()
-                        showCommentCoinDialog = null
-                    },
-                    onError = { msg ->
-                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                    }
-                )
+    // 子评论底部表单
+    showRepliesSheet?.let { comment ->
+        CommentRepliesBottomSheet(
+            comment = comment,
+            replies = commentReplies[comment.id] ?: emptyList(),
+            onDismiss = { showRepliesSheet = null },
+            onReply = { parentComment ->
+                replyToComment = parentComment
+                showCommentDialog = true
+                showRepliesSheet = null
             }
         )
     }
-}
 
-@Composable
-fun CoinDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit
-) {
-    var selectedAmount by remember { mutableStateOf(1) }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("投币") },
-        text = {
-            Column {
-                Text("选择投币数量（1-10）")
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+    // 删除确认对话框
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("删除帖子") },
+            text = { Text("确定要删除这个帖子吗？删除后无法恢复。") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deletePost(postId,
+                            onSuccess = {
+                                showDeleteDialog = false
+                                onBack()
+                            },
+                            onError = { message ->
+                                showDeleteDialog = false
+                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
                 ) {
-                    IconButton(
-                        onClick = { if (selectedAmount > 1) selectedAmount-- }
-                    ) {
-                        Icon(Icons.Default.Remove, contentDescription = "减少")
-                    }
-                    
-                    Text(
-                        text = selectedAmount.toString(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    
-                    IconButton(
-                        onClick = { if (selectedAmount < 10) selectedAmount++ }
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "增加")
-                    }
+                    Text("删除")
                 }
-                
-                Slider(
-                    value = selectedAmount.toFloat(),
-                    onValueChange = { selectedAmount = it.toInt() },
-                    valueRange = 1f..10f,
-                    steps = 8
-                )
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("取消")
+                }
             }
-        },
-        confirmButton = {
-            Button(onClick = { onConfirm(selectedAmount) }) {
-                Text("确定")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
-    )
+        )
+    }
 }
 
 @Composable
@@ -435,11 +469,11 @@ private fun PostContent(post: Post) {
                 )
             }
 
-                        Text(
-                            text = formatPostTime(post.publishTime),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+            Text(
+                text = formatPostTime(post.publishTime),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -453,38 +487,6 @@ private fun PostContent(post: Post) {
                 modifier = Modifier.fillMaxWidth()
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            StatItem(Icons.Default.Visibility, "${post.viewCount} 浏览")
-            StatItem(Icons.Default.ThumbUp, "${post.likes} 点赞")
-            StatItem(Icons.Default.Star, "${post.favorites} 收藏")
-            if (post.coins > 0) {
-                StatItem(Icons.Default.MonetizationOn, "${post.coins} 硬币")
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatItem(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            icon,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
@@ -492,120 +494,375 @@ private fun StatItem(icon: androidx.compose.ui.graphics.vector.ImageVector, text
 @Composable
 private fun CommentItem(
     comment: Comment,
+    replies: List<Comment>,
     onLike: () -> Unit,
-    onCoin: () -> Unit
+    onReply: () -> Unit,
+    onShowReplies: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        )
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
+            // 评论头部
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.AccountCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary
+                    Text(
+                        text = comment.username ?: "匿名用户",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = comment.username ?: "匿名用户",
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                            if (comment.isAuthor) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                AssistChip(
-                                    onClick = { },
-                                    label = { Text("楼主", style = MaterialTheme.typography.labelSmall) },
-                                    modifier = Modifier.height(20.dp)
-                                )
-                            }
-                        }
+                    if (comment.isAuthor) {
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "${comment.floor ?: 0}楼",
+                            text = "楼主",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "#${comment.floor ?: 0}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
-                Text(
-                    text = formatPostTime(comment.createdAt ?: ""),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                // 删除按钮（仅作者可见）
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "删除",
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            // 评论内容
             Text(
-                text = comment.content ?: "内容为空", 
+                text = comment.content ?: "",
                 style = MaterialTheme.typography.bodyMedium
             )
+
             Spacer(modifier = Modifier.height(8.dp))
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(
-                    onClick = onLike,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+            // 显示前3个子评论
+            if (replies.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .padding(8.dp)
                 ) {
+                    replies.take(3).forEach { reply ->
+                        Row {
+                            Text(
+                                text = "${reply.username ?: "匿名用户"}：",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = reply.content ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        if (reply != replies.take(3).last()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                    }
+                }
+
+                if ((comment.replyCount ?: 0) > 0) {
+                    TextButton(
+                        onClick = onShowReplies,
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text("查看更多回复 (${comment.replyCount})")
+                    }
+                }
+            }
+
+            // 操作按钮
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                TextButton(onClick = onLike) {
                     Icon(
                         Icons.Default.ThumbUp,
                         contentDescription = "点赞",
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text((comment.likes ?: 0).toString())
+                    Text("${comment.likes ?: 0}")
                 }
 
-                if ((comment.coins ?: 0) > 0) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.MonetizationOn,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.tertiary
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = (comment.coins ?: 0).toString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
-                }
-                
-                // 投币按钮
-                TextButton(
-                    onClick = onCoin,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                ) {
+                TextButton(onClick = onReply) {
                     Icon(
-                        Icons.Default.MonetizationOn,
-                        contentDescription = "投币",
+                        Icons.Default.Reply,
+                        contentDescription = "回复",
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("投币")
+                    Text("回复")
                 }
             }
+
+            Text(
+                text = formatPostTime(comment.publishTime ?: ""),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FavoriteBottomSheet(
+    folders: List<Folder>,
+    onDismiss: () -> Unit,
+    onCreateFolder: (String, String?, Boolean) -> Unit,
+    onSelectFolder: (Int) -> Unit
+) {
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var selectedFolderId by remember { mutableStateOf<Int?>(null) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "选择收藏夹",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // 创建新收藏夹按钮
+            OutlinedButton(
+                onClick = { showCreateDialog = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("创建新收藏夹")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 收藏夹列表
+            folders.forEach { folder ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    onClick = { selectedFolderId = folder.id }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedFolderId == folder.id,
+                            onClick = { selectedFolderId = folder.id }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = folder.name,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            if (!folder.description.isNullOrEmpty()) {
+                                Text(
+                                    text = folder.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                text = "${folder.itemCount} 个帖子",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 确定按钮
+            Button(
+                onClick = {
+                    selectedFolderId?.let { onSelectFolder(it) }
+                },
+                enabled = selectedFolderId != null,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("确定")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+
+    // 创建收藏夹对话框
+    if (showCreateDialog) {
+        CreateFolderDialog(
+            onDismiss = { showCreateDialog = false },
+            onConfirm = { name, description, isPublic ->
+                onCreateFolder(name, description, isPublic)
+                showCreateDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun CreateFolderDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, String?, Boolean) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var isPublic by remember { mutableStateOf(true) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("创建收藏夹") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("收藏夹名称") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("描述（可选）") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = isPublic,
+                        onCheckedChange = { isPublic = it }
+                    )
+                    Text("公开收藏夹")
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (name.isNotBlank()) {
+                        onConfirm(name, description.ifBlank { null }, isPublic)
+                    }
+                },
+                enabled = name.isNotBlank()
+            ) {
+                Text("创建")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CommentRepliesBottomSheet(
+    comment: Comment,
+    replies: List<Comment>,
+    onDismiss: () -> Unit,
+    onReply: (Comment) -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "回复列表",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            LazyColumn {
+                items(replies) { reply ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        onClick = { onReply(reply) }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = reply.username ?: "匿名用户",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = formatPostTime(reply.publishTime ?: ""),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = reply.content ?: "",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -617,4 +874,3 @@ private fun formatPostTime(time: String): String {
         time
     }
 }
-

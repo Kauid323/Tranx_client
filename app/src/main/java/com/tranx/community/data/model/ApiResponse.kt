@@ -113,7 +113,35 @@ data class CommentListResponse(
 
 data class CreateCommentRequest(
     @SerializedName("post_id") val postId: Int,
+    @SerializedName("parent_id") val parentId: Int? = null,
     @SerializedName("content") val content: String
+)
+
+// 收藏夹相关模型
+data class Folder(
+    @SerializedName("id") val id: Int,
+    @SerializedName("user_id") val userId: Int,
+    @SerializedName("name") val name: String,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("is_public") val isPublic: Boolean = true,
+    @SerializedName("item_count") val itemCount: Int = 0,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null
+)
+
+data class CreateFolderRequest(
+    @SerializedName("name") val name: String,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("is_public") val isPublic: Boolean = true
+)
+
+data class CreateFolderResponse(
+    @SerializedName("folder_id") val folderId: Int
+)
+
+data class CreateBoardRequest(
+    @SerializedName("name") val name: String,
+    @SerializedName("description") val description: String? = null
 )
 
 // 签到相关模型

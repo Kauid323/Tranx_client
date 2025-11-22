@@ -184,5 +184,37 @@ interface ApiService {
         @Path("id") commentId: Int,
         @Body amount: Map<String, Int>
     ): ApiResponse<Map<String, Int>>
+
+    // 收藏夹相关API
+    @POST("/api/folders/create")
+    suspend fun createFolder(
+        @Header("Token") token: String,
+        @Body request: CreateFolderRequest
+    ): ApiResponse<CreateFolderResponse>
+
+    @GET("/api/folders/my")
+    suspend fun getMyFolders(@Header("Token") token: String): ApiResponse<List<Folder>>
+
+    @POST("/api/folders/{id}/posts")
+    suspend fun addPostToFolder(
+        @Header("Token") token: String,
+        @Path("id") folderId: Int,
+        @Body request: Map<String, Int>
+    ): ApiResponse<Unit>
+
+    @GET("/api/comments/{id}/replies")
+    suspend fun getCommentReplies(
+        @Header("Token") token: String,
+        @Path("id") commentId: Int,
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 20
+    ): ApiResponse<CommentListResponse>
+
+    // 板块创建API
+    @POST("/api/boards/create")
+    suspend fun createBoard(
+        @Header("Token") token: String,
+        @Body request: CreateBoardRequest
+    ): ApiResponse<Board>
 }
 
