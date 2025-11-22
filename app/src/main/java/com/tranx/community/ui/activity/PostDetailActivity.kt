@@ -123,6 +123,7 @@ fun PostDetailScreen(
         },
         bottomBar = {
             if (uiState is PostDetailUiState.Success) {
+                val state = uiState
                 Surface(
                     tonalElevation = 3.dp,
                     modifier = Modifier.navigationBarsPadding()
