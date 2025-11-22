@@ -123,84 +123,87 @@ fun PostDetailScreen(
         },
         bottomBar = {
             if (uiState is PostDetailUiState.Success) {
-                val currentPost = uiState.post
-                Surface(
-                    tonalElevation = 3.dp,
-                    modifier = Modifier.navigationBarsPadding()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceAround,
-                        verticalAlignment = Alignment.CenterVertically
+                // 使用 let 来处理智能转换
+                (uiState as PostDetailUiState.Success).let { successState ->
+                    val currentPost = successState.post
+                    Surface(
+                        tonalElevation = 3.dp,
+                        modifier = Modifier.navigationBarsPadding()
                     ) {
-                        // 点赞按钮 - 显示点赞数
-                        TextButton(onClick = { viewModel.likePost(postId) }) {
-                            Icon(
-                                Icons.Default.ThumbUp,
-                                contentDescription = "点赞",
-                                tint = if (isLiked) MaterialTheme.colorScheme.primary 
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = currentPost.likes.toString(),
-                                color = if (isLiked) MaterialTheme.colorScheme.primary 
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        // 收藏按钮 - 显示收藏数
-                        TextButton(onClick = { showFavoriteSheet = true }) {
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = "收藏",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = currentPost.favorites.toString(),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        // 投币按钮 - 显示投币数
-                        TextButton(onClick = {
-                            viewModel.coinPost(postId, 1,
-                                onSuccess = {
-                                    Toast.makeText(context, "投币成功", Toast.LENGTH_SHORT).show()
-                                },
-                                onError = { message ->
-                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                                }
-                            )
-                        }) {
-                            Icon(
-                                Icons.Default.MonetizationOn,
-                                contentDescription = "投币",
-                                tint = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (currentPost.coins > 0) currentPost.coins.toString() else "投币",
-                                color = MaterialTheme.colorScheme.tertiary
-                            )
-                        }
-
-                        FilledTonalButton(
-                            onClick = { 
-                                replyToComment = null
-                                showCommentDialog = true 
-                            },
-                            modifier = Modifier.weight(1f)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceAround,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Comment, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("发表评论")
+                            // 点赞按钮 - 显示点赞数
+                            TextButton(onClick = { viewModel.likePost(postId) }) {
+                                Icon(
+                                    Icons.Default.ThumbUp,
+                                    contentDescription = "点赞",
+                                    tint = if (isLiked) MaterialTheme.colorScheme.primary 
+                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = currentPost.likes.toString(),
+                                    color = if (isLiked) MaterialTheme.colorScheme.primary 
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            // 收藏按钮 - 显示收藏数
+                            TextButton(onClick = { showFavoriteSheet = true }) {
+                                Icon(
+                                    Icons.Default.Star,
+                                    contentDescription = "收藏",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = currentPost.favorites.toString(),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            // 投币按钮 - 显示投币数
+                            TextButton(onClick = {
+                                viewModel.coinPost(postId, 1,
+                                    onSuccess = {
+                                        Toast.makeText(context, "投币成功", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onError = { message ->
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            }) {
+                                Icon(
+                                    Icons.Default.MonetizationOn,
+                                    contentDescription = "投币",
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (currentPost.coins > 0) currentPost.coins.toString() else "投币",
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+
+                            FilledTonalButton(
+                                onClick = { 
+                                    replyToComment = null
+                                    showCommentDialog = true 
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.Comment, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("发表评论")
+                            }
                         }
                     }
                 }
