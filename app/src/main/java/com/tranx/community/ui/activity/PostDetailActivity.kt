@@ -123,7 +123,7 @@ fun PostDetailScreen(
         },
         bottomBar = {
             if (uiState is PostDetailUiState.Success) {
-                val state = uiState
+                val currentPost = uiState.post
                 Surface(
                     tonalElevation = 3.dp,
                     modifier = Modifier.navigationBarsPadding()
@@ -146,7 +146,7 @@ fun PostDetailScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = state.post.likes.toString(),
+                                text = currentPost.likes.toString(),
                                 color = if (isLiked) MaterialTheme.colorScheme.primary 
                                     else MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -162,7 +162,7 @@ fun PostDetailScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = state.post.favorites.toString(),
+                                text = currentPost.favorites.toString(),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -186,7 +186,7 @@ fun PostDetailScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (state.post.coins > 0) state.post.coins.toString() else "投币",
+                                text = if (currentPost.coins > 0) currentPost.coins.toString() else "投币",
                                 color = MaterialTheme.colorScheme.tertiary
                             )
                         }
