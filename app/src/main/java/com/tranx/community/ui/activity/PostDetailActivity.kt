@@ -137,7 +137,7 @@ fun PostDetailScreen(
                         IconButton(onClick = { viewModel.likePost(postId) }) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
-                                    if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                                    if (isLiked) Icons.Default.ThumbUp else Icons.Outlined.ThumbUp,
                                     contentDescription = "点赞",
                                     tint = if (isLiked) MaterialTheme.colorScheme.primary 
                                         else MaterialTheme.colorScheme.onSurfaceVariant
@@ -151,7 +151,7 @@ fun PostDetailScreen(
 
                         // 收藏
                         IconButton(onClick = { showFavoriteSheet = true }) {
-                            Column(horizontalAlignment = Alignment.CenterVertically) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
                                     Icons.Default.Star,
                                     contentDescription = "收藏"

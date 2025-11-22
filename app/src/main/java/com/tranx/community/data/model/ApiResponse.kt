@@ -93,13 +93,16 @@ data class Comment(
     @SerializedName("id") val id: Int,
     @SerializedName("post_id") val postId: Int,
     @SerializedName("user_id") val userId: Int,
+    @SerializedName("parent_id") val parentId: Int? = null,
     @SerializedName("username") val username: String? = null,
     @SerializedName("avatar") val avatar: String? = null,
     @SerializedName("content") val content: String? = null,
+    @SerializedName("publish_time") val publishTime: String? = null,
     @SerializedName("floor") val floor: Int? = null,
     @SerializedName("is_author") val isAuthor: Boolean = false,
     @SerializedName("likes") val likes: Int? = null,
     @SerializedName("coins") val coins: Int? = null,
+    @SerializedName("reply_count") val replyCount: Int? = null,
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("updated_at") val updatedAt: String? = null
 )
