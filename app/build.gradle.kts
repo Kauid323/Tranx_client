@@ -94,6 +94,9 @@ dependencies {
     // Pull to refresh - 更新到最新版本
     implementation("com.google.accompanist:accompanist-swiperefresh:0.34.0")
     
+    // Permissions - Accompanist权限库
+    implementation("com.google.accompanist:accompanist-permissions:0.34.0")
+    
     // Testing - 更新到兼容版本
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

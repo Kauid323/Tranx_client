@@ -216,5 +216,68 @@ interface ApiService {
         @Header("Token") token: String,
         @Body request: CreateBoardRequest
     ): ApiResponse<Board>
+
+    // 应用市场相关API
+    @GET("/api/apps/categories")
+    suspend fun getAppCategories(): ApiResponse<List<String>>
+
+    @GET("/api/apps/subcategories")
+    suspend fun getSubCategories(
+        @Query("main_category") mainCategory: String
+    ): ApiResponse<CategoryResponse>
+
+    @GET("/api/apps/category")
+    suspend fun getAppsByCategory(
+        @Query("main_category") mainCategory: String,
+        @Query("sub_category") subCategory: String,
+        @Query("sort") sort: String = "download",
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 20
+    ): ApiResponse<AppListResponse>
+
+    @GET("/api/apps")
+    suspend fun getAppList(
+        @Query("category") category: String? = null,
+        @Query("sort") sort: String = "download",
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 20
+    ): ApiResponse<AppListResponse>
+
+    @GET("/api/apps/{package_name}")
+    suspend fun getAppDetail(
+        @Path("package_name") packageName: String,
+        @Query("version") version: String? = null
+    ): ApiResponse<AppDetail>
+
+    @POST("/api/apps/{package_name}/coin")
+    suspend fun coinApp(
+        @Header("Token") token: String,
+        @Path("package_name") packageName: String,
+        @Body request: CoinRequest
+    ): ApiResponse<CoinResponse>
+
+    @POST("/api/apps/{package_name}/download")
+    suspend fun recordDownload(
+        @Path("package_name") packageName: String
+    ): ApiResponse<Unit>
+
+    @POST("/api/apps/upload")
+    suspend fun uploadApp(
+        @Header("Token") token: String,
+        @Body request: UploadAppRequest
+    ): ApiResponse<UploadTaskResponse>
+
+    @GET("/api/apps/my-uploads")
+    suspend fun getMyUploads(
+        @Header("Token") token: String,
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 20
+    ): ApiResponse<UploadTaskListResponse>
+
+    @GET("/api/apps/upload/{task_id}")
+    suspend fun getUploadTask(
+        @Header("Token") token: String,
+        @Path("task_id") taskId: Int
+    ): ApiResponse<UploadTask>
 }
 

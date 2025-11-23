@@ -179,3 +179,107 @@ data class UserListResponse(
     @SerializedName("list") val list: List<User>
 )
 
+// 应用市场相关模型
+data class App(
+    @SerializedName("package_name") val packageName: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("icon_url") val iconUrl: String? = null,
+    @SerializedName("version") val version: String,
+    @SerializedName("size") val size: Long = 0,
+    @SerializedName("rating") val rating: Double = 0.0
+)
+
+data class AppDetail(
+    @SerializedName("package_name") val packageName: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("icon_url") val iconUrl: String? = null,
+    @SerializedName("version") val version: String,
+    @SerializedName("version_code") val versionCode: Int = 0,
+    @SerializedName("size") val size: Long = 0,
+    @SerializedName("rating") val rating: Double = 0.0,
+    @SerializedName("rating_count") val ratingCount: Int = 0,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("screenshots") val screenshots: List<String>? = null,
+    @SerializedName("tags") val tags: List<String>? = null,
+    @SerializedName("download_url") val downloadUrl: String? = null,
+    @SerializedName("total_coins") val totalCoins: Int = 0,
+    @SerializedName("download_count") val downloadCount: Int = 0,
+    @SerializedName("uploader_name") val uploaderName: String? = null,
+    @SerializedName("update_content") val updateContent: String? = null,
+    @SerializedName("update_time") val updateTime: String? = null,
+    @SerializedName("main_category") val mainCategory: String? = null,
+    @SerializedName("sub_category") val subCategory: String? = null,
+    @SerializedName("channel") val channel: String? = null,
+    @SerializedName("share_desc") val shareDesc: String? = null,
+    @SerializedName("developer_name") val developerName: String? = null,
+    @SerializedName("ad_level") val adLevel: String? = null,
+    @SerializedName("payment_type") val paymentType: String? = null,
+    @SerializedName("operation_type") val operationType: String? = null
+)
+
+data class AppListResponse(
+    @SerializedName("total") val total: Int,
+    @SerializedName("page") val page: Int,
+    @SerializedName("page_size") val pageSize: Int,
+    @SerializedName("list") val list: List<App>?
+)
+
+data class CategoryResponse(
+    @SerializedName("main_category") val mainCategory: String,
+    @SerializedName("sub_categories") val subCategories: List<String>?
+)
+
+data class UploadAppRequest(
+    @SerializedName("package_name") val packageName: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("icon_url") val iconUrl: String? = null,
+    @SerializedName("version") val version: String,
+    @SerializedName("version_code") val versionCode: Int,
+    @SerializedName("size") val size: Long,
+    @SerializedName("channel") val channel: String,
+    @SerializedName("main_category") val mainCategory: String,
+    @SerializedName("sub_category") val subCategory: String,
+    @SerializedName("screenshots") val screenshots: List<String>? = null,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("share_desc") val shareDesc: String? = null,
+    @SerializedName("update_content") val updateContent: String? = null,
+    @SerializedName("developer_name") val developerName: String? = null,
+    @SerializedName("ad_level") val adLevel: String = "none",
+    @SerializedName("payment_type") val paymentType: String = "free",
+    @SerializedName("operation_type") val operationType: String = "indie",
+    @SerializedName("download_url") val downloadUrl: String
+)
+
+data class UploadTask(
+    @SerializedName("task_id") val taskId: Int,
+    @SerializedName("package_name") val packageName: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("icon_url") val iconUrl: String? = null,
+    @SerializedName("version") val version: String,
+    @SerializedName("status") val status: String,
+    @SerializedName("status_label") val statusLabel: String? = null,
+    @SerializedName("upload_time") val uploadTime: String? = null
+)
+
+data class UploadTaskListResponse(
+    @SerializedName("total") val total: Int,
+    @SerializedName("page") val page: Int,
+    @SerializedName("page_size") val pageSize: Int,
+    @SerializedName("list") val list: List<UploadTask>?
+)
+
+data class UploadTaskResponse(
+    @SerializedName("task_id") val taskId: Int,
+    @SerializedName("status") val status: String,
+    @SerializedName("uploader") val uploader: String? = null,
+    @SerializedName("upload_time") val uploadTime: String? = null
+)
+
+data class CoinRequest(
+    @SerializedName("coins") val coins: Int
+)
+
+data class CoinResponse(
+    @SerializedName("total_coins") val totalCoins: Int
+)
+

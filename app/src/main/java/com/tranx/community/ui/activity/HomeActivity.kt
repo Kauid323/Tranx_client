@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import com.tranx.community.ui.screen.board.BoardListScreen
 import com.tranx.community.ui.screen.board.BoardListViewModel
+import com.tranx.community.ui.screen.app.AppListScreen
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -130,13 +131,24 @@ fun MainScreen(
                 NavigationBarItem(
                     icon = {
                         Icon(
-                            if (selectedTab == 2) Icons.Filled.Person else Icons.Outlined.Person,
+                            if (selectedTab == 2) Icons.Filled.Apps else Icons.Outlined.Apps,
+                            contentDescription = "应用"
+                        )
+                    },
+                    label = { Text("应用") },
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 }
+                )
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            if (selectedTab == 3) Icons.Filled.Person else Icons.Outlined.Person,
                             contentDescription = "我的"
                         )
                     },
                     label = { Text("我的") },
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 }
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 }
                 )
             }
         }
@@ -156,10 +168,22 @@ fun MainScreen(
                     homeViewModel.selectBoard(boardId)  // 选择对应的板块
                 }
             )
-            2 -> ProfileScreen(
+            2 -> AppListScreen(
+                paddingValues = paddingValues,
+                onAppClick = { packageName ->
+                    val intent = Intent(this@HomeActivity, AppDetailActivity::class.java)
+                    intent.putExtra("PACKAGE_NAME", packageName)
+                    startActivity(intent)
+                }
+            )
+            3 -> ProfileScreen(
                 viewModel = profileViewModel,
                 onLogout = onLogout,
-                paddingValues = paddingValues
+                paddingValues = paddingValues,
+                onUploadAppClick = {
+                    val intent = Intent(this@HomeActivity, UploadAppActivity::class.java)
+                    startActivity(intent)
+                }
             )
         }
     }

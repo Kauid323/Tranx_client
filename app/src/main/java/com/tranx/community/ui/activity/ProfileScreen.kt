@@ -27,7 +27,8 @@ import kotlin.math.sqrt
 fun ProfileScreen(
     viewModel: ProfileViewModel,
     onLogout: () -> Unit,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    onUploadAppClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
@@ -257,6 +258,13 @@ fun ProfileScreen(
                                 leadingContent = { Icon(Icons.Default.History, contentDescription = null) },
                                 trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
                                 modifier = Modifier.clickable { /* TODO */ }
+                            )
+                            HorizontalDivider()
+                            ListItem(
+                                headlineContent = { Text("上传应用") },
+                                leadingContent = { Icon(Icons.Default.Upload, contentDescription = null) },
+                                trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                                modifier = Modifier.clickable { onUploadAppClick() }
                             )
                             HorizontalDivider()
                             ListItem(
