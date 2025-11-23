@@ -18,14 +18,14 @@ import retrofit2.http.Part
 interface PicuiApiService {
 
     @Multipart
-    @POST("/upload")
+    @POST("upload")
     suspend fun uploadImage(
         @Part file: MultipartBody.Part,
         @Part("token") token: RequestBody? = null,
         @Header("Accept") accept: String = "application/json"
     ): PicuiUploadResponse
 
-    @POST("/images/tokens")
+    @POST("images/tokens")
     suspend fun generateUploadToken(
         @Body request: PicuiTokenRequest,
         @Header("Accept") accept: String = "application/json"
