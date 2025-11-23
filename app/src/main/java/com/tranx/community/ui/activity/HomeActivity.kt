@@ -357,9 +357,7 @@ fun HomeScreen(
             )
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
+}@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PostItem(
     post: Post,
@@ -579,3 +577,4 @@ fun CoinAmountDialog(
         }
     )
 }
+

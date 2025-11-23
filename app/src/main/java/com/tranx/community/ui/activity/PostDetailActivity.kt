@@ -33,7 +33,11 @@ import com.tranx.community.data.model.Post
 import com.tranx.community.data.model.Folder
 import com.tranx.community.ui.screen.post.PostDetailUiState
 import com.tranx.community.ui.screen.post.PostDetailViewModel
-import com.tranx.community.ui.theme.TranxCommunityTheme
+import com.tranx.community.ui.component.CoinAmountDialog
+import com.tranx.community.ui.component.CommentRepliesBottomSheet
+import com.tranx.community.ui.component.CreateFolderDialog
+import com.tranx.community.ui.component.FavoriteBottomSheet
+import com.tranx.community.ui.component.formatTime
 
 class PostDetailActivity : ComponentActivity() {
     private val viewModel: PostDetailViewModel by viewModels()
@@ -101,7 +105,7 @@ fun PostDetailScreen(
     var showRepliesSheet by remember { mutableStateOf<Comment?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showPostCoinDialog by remember { mutableStateOf(false) }
-    var commentCoinTarget by remember { mutableStateOf<Comment?>(null) }
+    val commentCoinTarget by remember { mutableStateOf<Comment?>(null) }
     var commentText by remember { mutableStateOf("") }
     var replyToComment by remember { mutableStateOf<Comment?>(null) }
 
@@ -695,7 +699,7 @@ private fun CommentItem(
             }
 
             Text(
-                text = formatPostTime(comment.publishTime ?: ""),
+                text = formatTime(comment.publishTime ?: ""),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -915,7 +919,7 @@ private fun CommentRepliesBottomSheet(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = formatPostTime(reply.publishTime ?: ""),
+                                    text = formatTime(reply.publishTime ?: ""),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -932,13 +936,5 @@ private fun CommentRepliesBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
-    }
-}
-
-private fun formatPostTime(time: String): String {
-    return try {
-        time.substring(0, 10)
-    } catch (e: Exception) {
-        time
     }
 }

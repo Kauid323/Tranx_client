@@ -26,13 +26,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.tranx.community.ui.component.CoinAmountDialog
+import com.tranx.community.ui.component.CreateFolderDialog
+import com.tranx.community.ui.component.FavoriteBottomSheet
+import com.tranx.community.ui.component.PostItem
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.tranx.community.TranxApp
 import com.tranx.community.data.local.PreferencesManager
+import com.tranx.community.data.model.Board
 import com.tranx.community.data.model.Post
 import com.tranx.community.ui.screen.board.BoardDetailUiState
-import com.tranx.community.ui.screen.board.BoardDetailViewModel
 import com.tranx.community.ui.theme.TranxCommunityTheme
 
 class BoardDetailActivity : ComponentActivity() {

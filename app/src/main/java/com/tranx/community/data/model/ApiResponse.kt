@@ -59,7 +59,6 @@ data class Post(
     @SerializedName("coins") val coins: Int = 0,
     @SerializedName("favorites") val favorites: Int = 0,
     @SerializedName("likes") val likes: Int = 0,
-    @SerializedName("image_url") val imageUrl: String? = null,
     @SerializedName("attachment_url") val attachmentUrl: String? = null,
     @SerializedName("attachment_type") val attachmentType: String? = null,
     @SerializedName("comment_count") val commentCount: Int = 0,
