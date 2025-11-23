@@ -21,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -102,6 +103,7 @@ fun MainScreen(
     onLogout: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
+    val context = LocalContext.current
 
     Scaffold(
         bottomBar = {
@@ -171,9 +173,9 @@ fun MainScreen(
             2 -> AppListScreen(
                 paddingValues = paddingValues,
                 onAppClick = { packageName ->
-                    val intent = Intent(this@HomeActivity, AppDetailActivity::class.java)
+                    val intent = Intent(context, AppDetailActivity::class.java)
                     intent.putExtra("PACKAGE_NAME", packageName)
-                    startActivity(intent)
+                    context.startActivity(intent)
                 }
             )
             3 -> ProfileScreen(
@@ -181,8 +183,8 @@ fun MainScreen(
                 onLogout = onLogout,
                 paddingValues = paddingValues,
                 onUploadAppClick = {
-                    val intent = Intent(this@HomeActivity, UploadAppActivity::class.java)
-                    startActivity(intent)
+                    val intent = Intent(context, UploadAppActivity::class.java)
+                    context.startActivity(intent)
                 }
             )
         }
