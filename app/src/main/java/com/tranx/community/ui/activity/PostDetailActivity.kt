@@ -38,6 +38,7 @@ import com.tranx.community.ui.component.CommentRepliesBottomSheet
 import com.tranx.community.ui.component.CreateFolderDialog
 import com.tranx.community.ui.component.FavoriteBottomSheet
 import com.tranx.community.ui.component.formatTime
+import com.tranx.community.ui.theme.TranxCommunityTheme
 
 class PostDetailActivity : ComponentActivity() {
     private val viewModel: PostDetailViewModel by viewModels()
@@ -105,7 +106,7 @@ fun PostDetailScreen(
     var showRepliesSheet by remember { mutableStateOf<Comment?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showPostCoinDialog by remember { mutableStateOf(false) }
-    val commentCoinTarget by remember { mutableStateOf<Comment?>(null) }
+    var commentCoinTarget by remember { mutableStateOf<Comment?>(null) }
     var commentText by remember { mutableStateOf("") }
     var replyToComment by remember { mutableStateOf<Comment?>(null) }
 
@@ -523,7 +524,7 @@ private fun PostContent(post: Post) {
             }
 
             Text(
-                text = formatPostTime(post.publishTime),
+                text = formatTime(post.publishTime),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -687,7 +688,6 @@ private fun CommentItem(
                 }
 
                 TextButton(onClick = onReply) {
-                TextButton(onClick = onReply) {
                     Icon(
                         Icons.Default.Reply,
                         contentDescription = "回复",
@@ -703,238 +703,6 @@ private fun CommentItem(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FavoriteBottomSheet(
-    folders: List<Folder>,
-    onDismiss: () -> Unit,
-    onCreateFolder: (String, String?, Boolean) -> Unit,
-    onSelectFolder: (Int) -> Unit
-) {
-    var showCreateDialog by remember { mutableStateOf(false) }
-    var selectedFolderId by remember { mutableStateOf<Int?>(null) }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "选择收藏夹",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            // 创建新收藏夹按钮
-            OutlinedButton(
-                onClick = { showCreateDialog = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("创建新收藏夹")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 收藏夹列表
-            folders.forEach { folder ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    onClick = { selectedFolderId = folder.id }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selectedFolderId == folder.id,
-                            onClick = { selectedFolderId = folder.id }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = folder.name,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            if (!folder.description.isNullOrEmpty()) {
-                                Text(
-                                    text = folder.description,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Text(
-                                text = "${folder.itemCount} 个帖子",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 确定按钮
-            Button(
-                onClick = {
-                    selectedFolderId?.let { onSelectFolder(it) }
-                },
-                enabled = selectedFolderId != null,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("确定")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-    }
-
-    // 创建收藏夹对话框
-    if (showCreateDialog) {
-        CreateFolderDialog(
-            onDismiss = { showCreateDialog = false },
-            onConfirm = { name, description, isPublic ->
-                onCreateFolder(name, description, isPublic)
-                showCreateDialog = false
-            }
-        )
-    }
-}
-
-@Composable
-fun CreateFolderDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String, String?, Boolean) -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var isPublic by remember { mutableStateOf(true) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("创建收藏夹") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("收藏夹名称") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("描述（可选）") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = isPublic,
-                        onCheckedChange = { isPublic = it }
-                    )
-                    Text("公开收藏夹")
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (name.isNotBlank()) {
-                        onConfirm(name, description.ifBlank { null }, isPublic)
-                    }
-                },
-                enabled = name.isNotBlank()
-            ) {
-                Text("创建")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CommentRepliesBottomSheet(
-    comment: Comment,
-    replies: List<Comment>,
-    onDismiss: () -> Unit,
-    onReply: (Comment) -> Unit
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "回复列表",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            LazyColumn {
-                items(replies) { reply ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        onClick = { onReply(reply) }
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = reply.username ?: "匿名用户",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = formatTime(reply.publishTime ?: ""),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = reply.content ?: "",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

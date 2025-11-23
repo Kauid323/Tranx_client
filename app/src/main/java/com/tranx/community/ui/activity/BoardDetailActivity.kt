@@ -37,6 +37,7 @@ import com.tranx.community.data.local.PreferencesManager
 import com.tranx.community.data.model.Board
 import com.tranx.community.data.model.Post
 import com.tranx.community.ui.screen.board.BoardDetailUiState
+import com.tranx.community.ui.screen.board.BoardDetailViewModel
 import com.tranx.community.ui.theme.TranxCommunityTheme
 
 class BoardDetailActivity : ComponentActivity() {
