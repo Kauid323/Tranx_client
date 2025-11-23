@@ -27,6 +27,7 @@ interface PicuiApiService {
 
     @POST("images/tokens")
     suspend fun generateUploadToken(
+        @Header("Authorization") authorization: String,
         @Body request: PicuiTokenRequest,
         @Header("Accept") accept: String = "application/json"
     ): PicuiTokenResponse

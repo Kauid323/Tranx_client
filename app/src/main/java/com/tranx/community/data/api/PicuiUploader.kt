@@ -31,8 +31,16 @@ object PicuiUploader {
                 val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
                 val part = MultipartBody.Part.createFormData("file", fileName, requestBody)
 
-                val temporaryToken = requestUploadToken()
-                    ?: return@withContext Result.failure(IOException("自动获取上传 Token 失败"))
+                // 检查是否有保存的 Picui Token
+                val picuiToken = prefs.getPicuiToken()?.trim()
+                if (picuiToken.isNullOrEmpty()) {
+                    return@withContext Result.failure(IOException("请先在设置中配置 Picui Token"))
+                }
+
+                val authorization = if (picuiToken.startsWith("Bearer ")) picuiToken else "Bearer $picuiToken"
+                
+                val temporaryToken = requestUploadToken(authorization)
+                    ?: return@withContext Result.failure(IOException("获取上传 Token 失败"))
                 val tokenBody = temporaryToken.toRequestBody("text/plain".toMediaType())
 
                 val response = apiService.uploadImage(
@@ -56,9 +64,10 @@ object PicuiUploader {
         }
     }
 
-    private suspend fun requestUploadToken(): String? {
+    private suspend fun requestUploadToken(authorization: String): String? {
         return try {
             val response = apiService.generateUploadToken(
+                authorization = authorization,
                 request = PicuiTokenRequest(
                     num = 1,
                     seconds = MAX_TOKEN_EXPIRE_SECONDS
