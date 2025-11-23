@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.Cursor
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.tranx.community.TranxApp
 import com.tranx.community.data.model.PicuiTokenRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,6 +19,7 @@ object PicuiUploader {
     private const val MAX_TOKEN_EXPIRE_SECONDS = 2_626_560
 
     private val apiService by lazy { PicuiApiService.create() }
+    private val prefs by lazy { TranxApp.instance.preferencesManager }
 
     suspend fun uploadImage(context: Context, uri: Uri): Result<String> {
         return withContext(Dispatchers.IO) {
