@@ -4,7 +4,6 @@ import android.content.Context
 import android.database.Cursor
 import android.net.Uri
 import android.provider.OpenableColumns
-import com.tranx.community.TranxApp
 import com.tranx.community.data.model.PicuiTokenRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,7 +18,6 @@ object PicuiUploader {
     private const val MAX_TOKEN_EXPIRE_SECONDS = 2_626_560
 
     private val apiService by lazy { PicuiApiService.create() }
-    private val prefs by lazy { TranxApp.instance.preferencesManager }
 
     suspend fun uploadImage(context: Context, uri: Uri): Result<String> {
         return withContext(Dispatchers.IO) {
@@ -33,17 +31,11 @@ object PicuiUploader {
                 val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
                 val part = MultipartBody.Part.createFormData("file", fileName, requestBody)
 
-                val picuiToken = prefs.getPicuiToken()
-                    ?: return@withContext Result.failure(IOException("请先在设置中配置 Picui Token"))
-                val authorization = "Bearer $picuiToken"
-
-                val temporaryToken = requestUploadToken(authorization)
-                    ?: return@withContext Result.failure(IOException("获取上传 Token 失败"))
-
+                val temporaryToken = requestUploadToken()
+                    ?: return@withContext Result.failure(IOException("自动获取上传 Token 失败"))
                 val tokenBody = temporaryToken.toRequestBody("text/plain".toMediaType())
 
                 val response = apiService.uploadImage(
-                    authorization = authorization,
                     file = part,
                     token = tokenBody
                 )
@@ -64,10 +56,9 @@ object PicuiUploader {
         }
     }
 
-    private suspend fun requestUploadToken(authorization: String): String? {
+    private suspend fun requestUploadToken(): String? {
         return try {
             val response = apiService.generateUploadToken(
-                authorization = authorization,
                 request = PicuiTokenRequest(
                     num = 1,
                     seconds = MAX_TOKEN_EXPIRE_SECONDS

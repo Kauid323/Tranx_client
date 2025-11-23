@@ -20,17 +20,15 @@ interface PicuiApiService {
     @Multipart
     @POST("/upload")
     suspend fun uploadImage(
-        @Header("Authorization") authorization: String?,
-        @Header("Accept") accept: String = "application/json",
         @Part file: MultipartBody.Part,
-        @Part("token") token: RequestBody? = null
+        @Part("token") token: RequestBody? = null,
+        @Header("Accept") accept: String = "application/json"
     ): PicuiUploadResponse
 
     @POST("/images/tokens")
     suspend fun generateUploadToken(
-        @Header("Authorization") authorization: String,
-        @Header("Accept") accept: String = "application/json",
-        @Body request: PicuiTokenRequest
+        @Body request: PicuiTokenRequest,
+        @Header("Accept") accept: String = "application/json"
     ): PicuiTokenResponse
 
     companion object {
