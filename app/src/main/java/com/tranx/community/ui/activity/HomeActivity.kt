@@ -22,16 +22,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import com.tranx.community.ui.component.CoinAmountDialog
-import com.tranx.community.ui.component.CreateFolderDialog
-import com.tranx.community.ui.component.FavoriteBottomSheet
-import com.tranx.community.ui.component.PostItem
-import com.tranx.community.ui.component.formatTime
+import androidx.compose.ui.unit.dp
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.tranx.community.TranxApp
 import com.tranx.community.data.local.PreferencesManager
 import com.tranx.community.data.model.Post
+import com.tranx.community.ui.component.CoinAmountDialog
+import com.tranx.community.ui.component.FavoriteBottomSheet
+import com.tranx.community.ui.component.PostItem
 import com.tranx.community.ui.screen.home.HomeUiState
 import com.tranx.community.ui.screen.home.HomeViewModel
 import com.tranx.community.ui.screen.profile.ProfileViewModel
@@ -74,11 +73,6 @@ class HomeActivity : ComponentActivity() {
                     },
                     onCreatePostClick = {
                         val intent = Intent(this, CreatePostActivity::class.java)
-                        // 传递当前选中的板块ID
-                        val currentBoardId = homeViewModel.currentBoardId.value
-                        if (currentBoardId != null) {
-                            intent.putExtra("BOARD_ID", currentBoardId)
-                        }
                         startActivity(intent)
                     },
                     onLogout = {
@@ -363,4 +357,3 @@ fun HomeScreen(
             )
         }
     }
-}
