@@ -122,7 +122,7 @@ interface ApiService {
     suspend fun likePost(
         @Header("Token") token: String,
         @Path("id") postId: Int
-    ): ApiResponse<Map<String, Int>>
+    ): ApiResponse<LikeResult>
 
     @DELETE("/api/posts/{id}/like")
     suspend fun unlikePost(
@@ -141,7 +141,7 @@ interface ApiService {
         @Header("Token") token: String,
         @Path("id") postId: Int,
         @Body amount: Map<String, Int>
-    ): ApiResponse<Unit>
+    ): ApiResponse<CoinResult>
 
     // 评论相关
     @POST("/api/comments/create")
@@ -176,14 +176,14 @@ interface ApiService {
     suspend fun likeComment(
         @Header("Token") token: String,
         @Path("id") commentId: Int
-    ): ApiResponse<Unit>
+    ): ApiResponse<LikeResult>
 
     @POST("/api/comments/{id}/coin")
     suspend fun coinComment(
         @Header("Token") token: String,
         @Path("id") commentId: Int,
         @Body amount: Map<String, Int>
-    ): ApiResponse<Map<String, Int>>
+    ): ApiResponse<CoinResult>
 
     // 收藏夹相关API
     @POST("/api/folders/create")

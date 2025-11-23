@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.tranx.community.data.model.Board
@@ -92,10 +93,11 @@ fun BoardListScreen(
     if (showCreateDialog) {
         CreateBoardDialog(
             onDismiss = { showCreateDialog = false },
-            onConfirm = { name, description ->
+            onConfirm = { name, description, avatar ->
                 viewModel.createBoard(
                     name = name,
                     description = description,
+                    avatarUrl = avatar,
                     onSuccess = { 
                         showCreateDialog = false 
                     },
@@ -109,10 +111,11 @@ fun BoardListScreen(
 @Composable
 private fun CreateBoardDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String?) -> Unit
+    onConfirm: (String, String?, String?) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
+    var avatarUrl by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -133,13 +136,25 @@ private fun CreateBoardDialog(
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 3
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = avatarUrl,
+                    onValueChange = { avatarUrl = it },
+                    label = { Text("分区头像URL（可选）") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 2
+                )
             }
         },
         confirmButton = {
             Button(
                 onClick = {
                     if (name.isNotBlank()) {
-                        onConfirm(name, description.ifBlank { null })
+                        onConfirm(
+                            name,
+                            description.ifBlank { null },
+                            avatarUrl.ifBlank { null }
+                        )
                     }
                 },
                 enabled = name.isNotBlank()
@@ -168,14 +183,22 @@ fun BoardItem(board: Board, onClick: () -> Unit) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.Forum,
-                contentDescription = null,
-                modifier = Modifier.size(40.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.width(16.dp))
+            if (!board.avatarUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = board.avatarUrl,
+                    contentDescription = board.name,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .padding(end = 12.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Forum,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
             
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -183,6 +206,14 @@ fun BoardItem(board: Board, onClick: () -> Unit) {
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
+                board.creatorName?.let { creator ->
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "创建者：$creator",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 if (!board.description.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(

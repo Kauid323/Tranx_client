@@ -52,6 +52,8 @@ data class Post(
     @SerializedName("user_id") val userId: Int,
     @SerializedName("title") val title: String,
     @SerializedName("content") val content: String,
+    @SerializedName("type") val type: String? = "text",
+    @SerializedName("image_url") val imageUrl: String? = null,
     @SerializedName("publisher") val publisher: String,
     @SerializedName("publish_time") val publishTime: String,
     @SerializedName("coins") val coins: Int = 0,
@@ -62,20 +64,23 @@ data class Post(
     @SerializedName("attachment_type") val attachmentType: String? = null,
     @SerializedName("comment_count") val commentCount: Int = 0,
     @SerializedName("view_count") val viewCount: Int = 0,
-    @SerializedName("last_reply_time") val lastReplyTime: String? = null
+    @SerializedName("last_reply_time") val lastReplyTime: String? = null,
+    @SerializedName("is_liked") val isLiked: Boolean? = null,
+    @SerializedName("is_favorited") val isFavorited: Boolean? = null
 )
 
 data class PostListResponse(
     @SerializedName("total") val total: Int,
     @SerializedName("page") val page: Int,
     @SerializedName("page_size") val pageSize: Int,
-    @SerializedName("list") val list: List<Post>
+    @SerializedName("list") val list: List<Post>?
 )
 
 data class CreatePostRequest(
     @SerializedName("board_id") val boardId: Int,
     @SerializedName("title") val title: String,
     @SerializedName("content") val content: String,
+    @SerializedName("type") val type: String = "text",
     @SerializedName("image_url") val imageUrl: String? = null
 )
 
@@ -84,8 +89,14 @@ data class Board(
     @SerializedName("id") val id: Int,
     @SerializedName("name") val name: String,
     @SerializedName("description") val description: String? = null,
+    @SerializedName("avatar_url") val avatarUrl: String? = null,
+    @SerializedName("creator_id") val creatorId: Int? = null,
+    @SerializedName("creator_name") val creatorName: String? = null,
+    @SerializedName("creator_avatar") val creatorAvatar: String? = null,
     @SerializedName("created_at") val createdAt: String? = null,
-    @SerializedName("updated_at") val updatedAt: String? = null
+    @SerializedName("updated_at") val updatedAt: String? = null,
+    @SerializedName("created_at_ts") val createdAtTs: Long? = null,
+    @SerializedName("updated_at_ts") val updatedAtTs: Long? = null
 )
 
 // 评论相关模型
@@ -100,6 +111,7 @@ data class Comment(
     @SerializedName("publish_time") val publishTime: String? = null,
     @SerializedName("floor") val floor: Int? = null,
     @SerializedName("is_author") val isAuthor: Boolean = false,
+    @SerializedName("is_liked") val isLiked: Boolean? = null,
     @SerializedName("likes") val likes: Int? = null,
     @SerializedName("coins") val coins: Int? = null,
     @SerializedName("reply_count") val replyCount: Int? = null,
@@ -144,7 +156,8 @@ data class CreateFolderResponse(
 
 data class CreateBoardRequest(
     @SerializedName("name") val name: String,
-    @SerializedName("description") val description: String? = null
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("avatar_url") val avatarUrl: String? = null
 )
 
 // 签到相关模型
@@ -281,5 +294,38 @@ data class CoinRequest(
 
 data class CoinResponse(
     @SerializedName("total_coins") val totalCoins: Int
+)
+
+data class LikeResult(
+    @SerializedName("likes") val likes: Int,
+    @SerializedName("is_liked") val isLiked: Boolean
+)
+
+data class CoinResult(
+    @SerializedName("coins") val coins: Int,
+    @SerializedName("user_coins") val userCoins: Int? = null
+)
+
+// Picui 图床相关
+data class PicuiUploadResponse(
+    @SerializedName("status") val status: Boolean,
+    @SerializedName("message") val message: String?,
+    @SerializedName("data") val data: PicuiUploadData?
+)
+
+data class PicuiUploadData(
+    @SerializedName("key") val key: String?,
+    @SerializedName("name") val name: String?,
+    @SerializedName("links") val links: PicuiLinks?
+)
+
+data class PicuiLinks(
+    @SerializedName("url") val url: String?,
+    @SerializedName("html") val html: String?,
+    @SerializedName("bbcode") val bbcode: String?,
+    @SerializedName("markdown") val markdown: String?,
+    @SerializedName("markdown_with_link") val markdownWithLink: String?,
+    @SerializedName("thumbnail_url") val thumbnailUrl: String?,
+    @SerializedName("delete_url") val deleteUrl: String?
 )
 

@@ -19,6 +19,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_PRIMARY_COLOR = "primary_color"
         private const val KEY_USE_DYNAMIC_COLOR = "use_dynamic_color"
         private const val DEFAULT_SERVER_URL = "http://localhost:4999"
+        private const val KEY_PICUI_TOKEN = "picui_token"
     }
 
     // Theme modes
@@ -126,5 +127,11 @@ class PreferencesManager(context: Context) {
     fun isLoggedIn(): Boolean {
         return getToken() != null && getUser() != null
     }
+
+    fun savePicuiToken(token: String) {
+        prefs.edit().putString(KEY_PICUI_TOKEN, token).apply()
+    }
+
+    fun getPicuiToken(): String? = prefs.getString(KEY_PICUI_TOKEN, null)
 }
 

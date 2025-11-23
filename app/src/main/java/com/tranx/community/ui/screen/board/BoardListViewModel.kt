@@ -47,13 +47,13 @@ class BoardListViewModel : ViewModel() {
         }
     }
 
-    fun createBoard(name: String, description: String?, onSuccess: () -> Unit, onError: (String) -> Unit) {
+    fun createBoard(name: String, description: String?, avatarUrl: String?, onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             try {
                 val token = prefsManager.getToken() ?: throw Exception("未登录")
                 val apiService = RetrofitClient.getApiService()
 
-                val response = apiService.createBoard(token, CreateBoardRequest(name, description))
+                val response = apiService.createBoard(token, CreateBoardRequest(name, description, avatarUrl))
                 if (response.code == 200) {
                     onSuccess()
                     loadBoards()

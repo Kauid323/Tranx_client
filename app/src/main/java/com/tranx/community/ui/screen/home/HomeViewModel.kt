@@ -4,7 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tranx.community.TranxApp
 import com.tranx.community.data.api.RetrofitClient
-import com.tranx.community.data.model.Board
+import com.tranx.community.data.model.CreateFolderRequest
+import com.tranx.community.data.model.Folder
 import com.tranx.community.data.model.Post
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +14,7 @@ import kotlinx.coroutines.launch
 
 sealed class HomeUiState {
     object Loading : HomeUiState()
-    data class Success(val posts: List<Post>, val boards: List<Board>) : HomeUiState()
+    data class Success(val posts: List<Post>) : HomeUiState()
     data class Error(val message: String) : HomeUiState()
 }
 
@@ -23,15 +24,15 @@ class HomeViewModel : ViewModel() {
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    private val _currentBoardId = MutableStateFlow<Int?>(null)
-    val currentBoardId: StateFlow<Int?> = _currentBoardId.asStateFlow()
-
     private val _sortType = MutableStateFlow("latest")
     val sortType: StateFlow<String> = _sortType.asStateFlow()
 
     // 跟踪已点赞的帖子
     private val _likedPosts = MutableStateFlow<Set<Int>>(emptySet())
     val likedPosts: StateFlow<Set<Int>> = _likedPosts.asStateFlow()
+
+    private val _folders = MutableStateFlow<List<Folder>>(emptyList())
+    val folders: StateFlow<List<Folder>> = _folders.asStateFlow()
 
     init {
         loadData()
@@ -55,24 +56,10 @@ class HomeViewModel : ViewModel() {
                 val apiService = RetrofitClient.getApiService()
 
                 // 加载板块列表
-                val boardsResponse = try {
-                    apiService.getBoardList(token)
-                } catch (e: Exception) {
-                    println("板块加载失败: ${e.message}")
-                    null
-                }
-                
-                val boards = if (boardsResponse?.code == 200 && boardsResponse.data != null) {
-                    boardsResponse.data
-                } else {
-                    emptyList()
-                }
-
                 // 加载帖子列表
                 val postsResponse = try {
                     apiService.getPostList(
                         token = token,
-                        boardId = _currentBoardId.value,
                         sort = _sortType.value
                     )
                 } catch (e: Exception) {
@@ -82,24 +69,19 @@ class HomeViewModel : ViewModel() {
                 }
 
                 val posts = if (postsResponse.code == 200 && postsResponse.data != null) {
-                    postsResponse.data.list
+                    postsResponse.data.list ?: emptyList()
                 } else {
                     println("帖子响应错误: code=${postsResponse.code}, message=${postsResponse.message}")
                     throw Exception(postsResponse.message ?: "加载帖子失败")
                 }
 
-                _uiState.value = HomeUiState.Success(posts, boards)
+                _uiState.value = HomeUiState.Success(posts)
             } catch (e: Exception) {
                 println("HomeViewModel loadData 异常: ${e.message}")
                 e.printStackTrace()
                 _uiState.value = HomeUiState.Error("加载失败: ${e.message}")
             }
         }
-    }
-
-    fun selectBoard(boardId: Int?) {
-        _currentBoardId.value = boardId
-        loadData()
     }
 
     fun changeSortType(sort: String) {
@@ -112,22 +94,16 @@ class HomeViewModel : ViewModel() {
             try {
                 val token = prefsManager.getToken() ?: return@launch
                 val apiService = RetrofitClient.getApiService()
-                
-                val isCurrentlyLiked = _likedPosts.value.contains(postId)
-                
-                if (isCurrentlyLiked) {
-                    // 取消点赞
-                    val response = apiService.unlikePost(token, postId)
-                    if (response.code == 200) {
-                        _likedPosts.value = _likedPosts.value - postId
-                        loadData()
-                    }
-                } else {
-                    // 点赞
-                    val response = apiService.likePost(token, postId)
-                    if (response.code == 200) {
+
+                val response = apiService.likePost(token, postId)
+                if (response.code == 200 && response.data != null) {
+                    if (response.data.isLiked) {
                         _likedPosts.value = _likedPosts.value + postId
-                        loadData()
+                    } else {
+                        _likedPosts.value = _likedPosts.value - postId
+                    }
+                    updatePost(postId) { post ->
+                        post.copy(likes = response.data.likes, isLiked = response.data.isLiked)
                     }
                 }
             } catch (e: Exception) {
@@ -153,6 +129,86 @@ class HomeViewModel : ViewModel() {
             } finally {
                 prefsManager.clearAll()
             }
+        }
+    }
+
+    fun loadFolders() {
+        viewModelScope.launch {
+            try {
+                val token = prefsManager.getToken() ?: return@launch
+                val apiService = RetrofitClient.getApiService()
+                val response = apiService.getMyFolders(token)
+                if (response.code == 200 && response.data != null) {
+                    _folders.value = response.data
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun addPostToFolder(postId: Int, folderId: Int, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val token = prefsManager.getToken() ?: return@launch
+                val apiService = RetrofitClient.getApiService()
+                val response = apiService.addPostToFolder(
+                    token,
+                    folderId,
+                    mapOf("post_id" to postId)
+                )
+                if (response.code == 200) {
+                    updatePost(postId) { post -> post.copy(favorites = post.favorites + 1, isFavorited = true) }
+                    onResult(true, null)
+                } else {
+                    onResult(false, response.message)
+                }
+            } catch (e: Exception) {
+                onResult(false, e.message)
+            }
+        }
+    }
+
+    fun createFolder(name: String, description: String?, isPublic: Boolean, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val token = prefsManager.getToken() ?: return@launch
+                val apiService = RetrofitClient.getApiService()
+                val response = apiService.createFolder(token, CreateFolderRequest(name, description, isPublic))
+                if (response.code == 200) {
+                    loadFolders()
+                    onComplete()
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun coinPost(postId: Int, amount: Int, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val token = prefsManager.getToken() ?: return@launch
+                val apiService = RetrofitClient.getApiService()
+                val response = apiService.coinPost(token, postId, mapOf("amount" to amount))
+                if (response.code == 200) {
+                    val coins = response.data?.coins ?: amount
+                    updatePost(postId) { post -> post.copy(coins = coins) }
+                    onResult(true, null)
+                } else {
+                    onResult(false, response.message)
+                }
+            } catch (e: Exception) {
+                onResult(false, e.message)
+            }
+        }
+    }
+
+    private fun updatePost(postId: Int, transform: (Post) -> Post) {
+        val currentState = _uiState.value
+        if (currentState is HomeUiState.Success) {
+            val updated = currentState.posts.map { post ->
+                if (post.id == postId) transform(post) else post
+            }
+            _uiState.value = HomeUiState.Success(updated)
         }
     }
 }

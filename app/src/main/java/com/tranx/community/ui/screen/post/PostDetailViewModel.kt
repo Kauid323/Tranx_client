@@ -47,6 +47,8 @@ class PostDetailViewModel : ViewModel() {
                 if (postResponse.code != 200 || postResponse.data == null) {
                     throw Exception(postResponse.message)
                 }
+                _isLiked.value = postResponse.data.isLiked == true
+                _isFavorited.value = postResponse.data.isFavorited == true
 
                 // 加载评论列表
                 val comments = try {
@@ -75,16 +77,13 @@ class PostDetailViewModel : ViewModel() {
             try {
                 val token = prefsManager.getToken() ?: return@launch
                 val apiService = RetrofitClient.getApiService()
-                
-                if (_isLiked.value) {
-                    apiService.unlikePost(token, postId)
-                    _isLiked.value = false
-                } else {
-                    apiService.likePost(token, postId)
-                    _isLiked.value = true
+                val response = apiService.likePost(token, postId)
+                if (response.code == 200 && response.data != null) {
+                    _isLiked.value = response.data.isLiked
+                    updatePostState { current ->
+                        current.copy(likes = response.data.likes)
+                    }
                 }
-                
-                loadPost(postId)
             } catch (e: Exception) {
                 // 处理错误
             }
@@ -101,7 +100,9 @@ class PostDetailViewModel : ViewModel() {
                 if (response.code == 200) {
                     _isFavorited.value = true
                     onSuccess()
-                    loadPost(postId)
+                    updatePostState { post ->
+                        post.copy(favorites = post.favorites + 1, isFavorited = true)
+                    }
                 } else {
                     onError(response.message)
                 }
@@ -120,7 +121,10 @@ class PostDetailViewModel : ViewModel() {
                 
                 if (response.code == 200) {
                     onSuccess()
-                    loadPost(postId)
+                    val coins = response.data?.coins ?: amount
+                    updatePostState { post ->
+                        post.copy(coins = coins)
+                    }
                 } else {
                     onError(response.message)
                 }
@@ -139,7 +143,14 @@ class PostDetailViewModel : ViewModel() {
                 
                 if (response.code == 200) {
                     onSuccess()
-                    loadPost(postId)
+                    val coins = response.data?.coins ?: amount
+                    updateComments { list ->
+                        list.map { comment ->
+                            if (comment.id == commentId) {
+                                comment.copy(coins = coins)
+                            } else comment
+                        }
+                    }
                 } else {
                     onError(response.message)
                 }
@@ -293,11 +304,36 @@ class PostDetailViewModel : ViewModel() {
             try {
                 val token = prefsManager.getToken() ?: return@launch
                 val apiService = RetrofitClient.getApiService()
-                apiService.likeComment(token, commentId)
-                loadPost(postId)
+                val response = apiService.likeComment(token, commentId)
+                if (response.code == 200 && response.data != null) {
+                    updateComments { list ->
+                        list.map { comment ->
+                            if (comment.id == commentId) {
+                                comment.copy(
+                                    likes = response.data.likes,
+                                    isLiked = response.data.isLiked
+                                )
+                            } else comment
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 // 处理错误
             }
+        }
+    }
+
+    private fun updatePostState(transform: (Post) -> Post) {
+        val currentState = _uiState.value
+        if (currentState is PostDetailUiState.Success) {
+            _uiState.value = currentState.copy(post = transform(currentState.post))
+        }
+    }
+
+    private fun updateComments(transform: (List<Comment>) -> List<Comment>) {
+        val currentState = _uiState.value
+        if (currentState is PostDetailUiState.Success) {
+            _uiState.value = currentState.copy(comments = transform(currentState.comments))
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.tranx.community.ui.activity
 
 import android.content.Intent
+import android.widget.Toast
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,7 +10,6 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -30,7 +30,6 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.tranx.community.TranxApp
 import com.tranx.community.data.local.PreferencesManager
-import com.tranx.community.data.model.Board
 import com.tranx.community.data.model.Post
 import com.tranx.community.ui.screen.home.HomeUiState
 import com.tranx.community.ui.screen.home.HomeViewModel
@@ -39,7 +38,7 @@ import com.tranx.community.ui.theme.TranxCommunityTheme
 
 class HomeActivity : ComponentActivity() {
     private val homeViewModel: HomeViewModel by viewModels()
-    private val profileViewModel: com.tranx.community.ui.screen.profile.ProfileViewModel by viewModels()
+    private val profileViewModel: ProfileViewModel by viewModels()
     private val boardListViewModel: BoardListViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,11 +73,6 @@ class HomeActivity : ComponentActivity() {
                     },
                     onCreatePostClick = {
                         val intent = Intent(this, CreatePostActivity::class.java)
-                        // 传递当前选中的板块ID
-                        val currentBoardId = homeViewModel.currentBoardId.value
-                        if (currentBoardId != null) {
-                            intent.putExtra("BOARD_ID", currentBoardId)
-                        }
                         startActivity(intent)
                     },
                     onLogout = {
@@ -96,7 +90,7 @@ class HomeActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     homeViewModel: HomeViewModel,
-    profileViewModel: com.tranx.community.ui.screen.profile.ProfileViewModel,
+    profileViewModel: ProfileViewModel,
     boardListViewModel: BoardListViewModel,
     onPostClick: (Int) -> Unit,
     onCreatePostClick: () -> Unit,
@@ -166,8 +160,9 @@ fun MainScreen(
                 viewModel = boardListViewModel,
                 paddingValues = paddingValues,
                 onBoardClick = { boardId ->
-                    selectedTab = 0  // 切换到首页
-                    homeViewModel.selectBoard(boardId)  // 选择对应的板块
+                    val intent = Intent(context, BoardDetailActivity::class.java)
+                    intent.putExtra("BOARD_ID", boardId)
+                    context.startActivity(intent)
                 }
             )
             2 -> AppListScreen(
@@ -200,10 +195,13 @@ fun HomeScreen(
     paddingValues: PaddingValues
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val currentBoardId by viewModel.currentBoardId.collectAsState()
     val sortType by viewModel.sortType.collectAsState()
+    val folders by viewModel.folders.collectAsState()
+    val context = LocalContext.current
 
     var showSortMenu by remember { mutableStateOf(false) }
+    var selectedPostForFavorite by remember { mutableStateOf<Post?>(null) }
+    var coinPostTarget by remember { mutableStateOf<Post?>(null) }
 
     Scaffold(
         modifier = Modifier.padding(paddingValues),
@@ -218,42 +216,24 @@ fun HomeScreen(
                         expanded = showSortMenu,
                         onDismissRequest = { showSortMenu = false }
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("最新发布") },
-                            onClick = {
-                                viewModel.changeSortType("latest")
-                                showSortMenu = false
-                            },
-                            leadingIcon = {
-                                if (sortType == "latest") {
-                                    Icon(Icons.Default.Check, contentDescription = null)
+                        listOf(
+                            "latest" to "最新发布",
+                            "reply" to "最近回复",
+                            "hot" to "热门"
+                        ).forEach { (value, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    viewModel.changeSortType(value)
+                                    showSortMenu = false
+                                },
+                                leadingIcon = {
+                                    if (sortType == value) {
+                                        Icon(Icons.Default.Check, contentDescription = null)
+                                    }
                                 }
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("最近回复") },
-                            onClick = {
-                                viewModel.changeSortType("reply")
-                                showSortMenu = false
-                            },
-                            leadingIcon = {
-                                if (sortType == "reply") {
-                                    Icon(Icons.Default.Check, contentDescription = null)
-                                }
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("热门") },
-                            onClick = {
-                                viewModel.changeSortType("hot")
-                                showSortMenu = false
-                            },
-                            leadingIcon = {
-                                if (sortType == "hot") {
-                                    Icon(Icons.Default.Check, contentDescription = null)
-                                }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             )
@@ -300,79 +280,80 @@ fun HomeScreen(
             }
 
             is HomeUiState.Success -> {
-                val isRefreshing by remember { mutableStateOf(false) }
-                
+                val swipeState = rememberSwipeRefreshState(uiState is HomeUiState.Loading)
                 SwipeRefresh(
-                    state = rememberSwipeRefreshState(isRefreshing),
+                    state = swipeState,
                     onRefresh = { viewModel.loadData() },
+                    modifier = Modifier.padding(innerPadding)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                    ) {
-                        if (state.boards.isNotEmpty()) {
-                            BoardFilterRow(
-                                boards = state.boards,
-                                selectedBoardId = currentBoardId,
-                                onBoardSelected = { viewModel.selectBoard(it) }
-                            )
+                    if (state.posts.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("暂无帖子", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-
-                        if (state.posts.isEmpty()) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("暂无帖子", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                items(state.posts) { post ->
-                                    PostItem(
-                                        post = post,
-                                        onClick = { onPostClick(post.id) },
-                                        onLike = { viewModel.likePost(post.id) },
-                                        onFavorite = { /* TODO */ },
-                                        onCoin = { /* TODO */ },
-                                        isLiked = viewModel.isPostLiked(post.id)
-                                    )
-                                }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(state.posts) { post ->
+                                PostItem(
+                                    post = post,
+                                    onClick = { onPostClick(post.id) },
+                                    onLike = { viewModel.likePost(post.id) },
+                                    onFavorite = {
+                                        selectedPostForFavorite = post
+                                        viewModel.loadFolders()
+                                    },
+                                    onCoin = { coinPostTarget = post },
+                                    isLiked = viewModel.isPostLiked(post.id)
+                                )
                             }
                         }
                     }
                 }
             }
         }
-    }
-}
 
-@Composable
-fun BoardFilterRow(
-    boards: List<Board>,
-    selectedBoardId: Int?,
-    onBoardSelected: (Int?) -> Unit
-) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        item {
-            FilterChip(
-                selected = selectedBoardId == null,
-                onClick = { onBoardSelected(null) },
-                label = { Text("全部") }
+        selectedPostForFavorite?.let { targetPost ->
+            FavoriteBottomSheet(
+                folders = folders,
+                onDismiss = { selectedPostForFavorite = null },
+                onCreateFolder = { name, description, isPublic ->
+                    viewModel.createFolder(name, description, isPublic) {
+                        Toast.makeText(context, "收藏夹已创建", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onSelectFolder = { folderId ->
+                    viewModel.addPostToFolder(targetPost.id, folderId) { success, message ->
+                        Toast.makeText(
+                            context,
+                            if (success) "收藏成功" else (message ?: "收藏失败"),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    selectedPostForFavorite = null
+                }
             )
         }
-        items(boards) { board ->
-            FilterChip(
-                selected = selectedBoardId == board.id,
-                onClick = { onBoardSelected(board.id) },
-                label = { Text(board.name) }
+
+        coinPostTarget?.let { targetPost ->
+            CoinAmountDialog(
+                onDismiss = { coinPostTarget = null },
+                onConfirm = { amount ->
+                    viewModel.coinPost(targetPost.id, amount) { success, message ->
+                        Toast.makeText(
+                            context,
+                            if (success) "投币成功" else (message ?: "投币失败"),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    coinPostTarget = null
+                }
             )
         }
     }
@@ -388,6 +369,9 @@ fun PostItem(
     onCoin: () -> Unit,
     isLiked: Boolean = false
 ) {
+    val likedState = post.isLiked ?: isLiked
+    val isFavorited = post.isFavorited == true
+
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -491,10 +475,10 @@ fun PostItem(
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(
-                            if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                            if (likedState) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                             contentDescription = "点赞",
                             modifier = Modifier.size(18.dp),
-                            tint = if (isLiked) MaterialTheme.colorScheme.primary 
+                            tint = if (likedState) MaterialTheme.colorScheme.primary 
                                 else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -507,9 +491,11 @@ fun PostItem(
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(
-                            Icons.Default.StarBorder,
+                            if (isFavorited) Icons.Filled.Star else Icons.Default.StarBorder,
                             contentDescription = "收藏",
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(18.dp),
+                            tint = if (isFavorited) MaterialTheme.colorScheme.secondary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(post.favorites.toString())
@@ -554,4 +540,42 @@ fun formatTime(time: String): String {
     } catch (e: Exception) {
         time
     }
+}
+
+@Composable
+fun CoinAmountDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var amountText by remember { mutableStateOf("1") }
+    val amount = amountText.toIntOrNull()?.coerceIn(1, 10) ?: 1
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("投币支持") },
+        text = {
+            Column {
+                Text("请输入投币数量 (1-10)")
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { input ->
+                        amountText = input.filter { it.isDigit() }.take(2)
+                    },
+                    label = { Text("数量") },
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(amount) }) {
+                Text("确定")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
 }

@@ -1,5 +1,6 @@
 package com.tranx.community.ui.activity
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -36,12 +37,13 @@ import com.tranx.community.ui.theme.TranxCommunityTheme
 
 class PostDetailActivity : ComponentActivity() {
     private val viewModel: PostDetailViewModel by viewModels()
+    private var postId: Int = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
-        val postId = intent.getIntExtra("POST_ID", -1)
+        postId = intent.getIntExtra("POST_ID", -1)
         if (postId == -1) {
             finish()
             return
@@ -72,6 +74,13 @@ class PostDetailActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        if (postId != -1) {
+            viewModel.loadPost(postId)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,6 +100,8 @@ fun PostDetailScreen(
     var showFavoriteSheet by remember { mutableStateOf(false) }
     var showRepliesSheet by remember { mutableStateOf<Comment?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showPostCoinDialog by remember { mutableStateOf(false) }
+    var commentCoinTarget by remember { mutableStateOf<Comment?>(null) }
     var commentText by remember { mutableStateOf("") }
     var replyToComment by remember { mutableStateOf<Comment?>(null) }
 
@@ -110,9 +121,16 @@ fun PostDetailScreen(
                 },
                 actions = {
                     if (uiState is PostDetailUiState.Success) {
-                        // 只有作者才能删除帖子
-                        val currentUser = TranxApp.instance.preferencesManager.getToken()
-                        if (currentUser != null) {
+                        val post = (uiState as PostDetailUiState.Success).post
+                        val currentUserId = TranxApp.instance.preferencesManager.getUser()?.id
+                        if (currentUserId != null && currentUserId == post.userId) {
+                            IconButton(onClick = {
+                                val intent = Intent(context, CreatePostActivity::class.java)
+                                intent.putExtra("POST_ID", post.id)
+                                context.startActivity(intent)
+                            }) {
+                                Icon(Icons.Default.Edit, contentDescription = "编辑帖子")
+                            }
                             IconButton(onClick = { showDeleteDialog = true }) {
                                 Icon(Icons.Default.Delete, contentDescription = "删除帖子")
                             }
@@ -169,17 +187,8 @@ fun PostDetailScreen(
                                 )
                             }
 
-                            // 投币按钮 - 显示投币数
-                            TextButton(onClick = {
-                                viewModel.coinPost(postId, 1,
-                                    onSuccess = {
-                                        Toast.makeText(context, "投币成功", Toast.LENGTH_SHORT).show()
-                                    },
-                                    onError = { message ->
-                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                                    }
-                                )
-                            }) {
+                        // 投币按钮 - 显示投币数
+                        TextButton(onClick = { showPostCoinDialog = true }) {
                                 Icon(
                                     Icons.Default.MonetizationOn,
                                     contentDescription = "投币",
@@ -300,6 +309,7 @@ fun PostDetailScreen(
                                         }
                                     )
                                 },
+                                onCoin = { commentCoinTarget = comment },
                                 viewModel = viewModel,
                                 postId = postId
                             )
@@ -394,6 +404,40 @@ fun PostDetailScreen(
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     }
                 )
+            }
+        )
+    }
+
+    if (showPostCoinDialog) {
+        CoinAmountDialog(
+            onDismiss = { showPostCoinDialog = false },
+            onConfirm = { amount ->
+                viewModel.coinPost(postId, amount,
+                    onSuccess = {
+                        Toast.makeText(context, "投币成功", Toast.LENGTH_SHORT).show()
+                    },
+                    onError = { message ->
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                )
+                showPostCoinDialog = false
+            }
+        )
+    }
+
+    commentCoinTarget?.let { target ->
+        CoinAmountDialog(
+            onDismiss = { commentCoinTarget = null },
+            onConfirm = { amount ->
+                viewModel.coinComment(target.id, postId, amount,
+                    onSuccess = {
+                        Toast.makeText(context, "投币成功", Toast.LENGTH_SHORT).show()
+                    },
+                    onError = { message ->
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                )
+                commentCoinTarget = null
             }
         )
     }
@@ -504,6 +548,7 @@ private fun CommentItem(
     onReply: () -> Unit,
     onShowReplies: () -> Unit,
     onDelete: () -> Unit,
+    onCoin: () -> Unit,
     viewModel: PostDetailViewModel,
     postId: Int
 ) {
@@ -623,16 +668,7 @@ private fun CommentItem(
                     Text("${comment.likes ?: 0}")
                 }
 
-                TextButton(onClick = {
-                    viewModel.coinComment(comment.id, postId, 1,
-                        onSuccess = {
-                            Toast.makeText(context, "投币成功", Toast.LENGTH_SHORT).show()
-                        },
-                        onError = { message ->
-                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                        }
-                    )
-                }) {
+                TextButton(onClick = onCoin) {
                     Icon(
                         Icons.Default.MonetizationOn,
                         contentDescription = "投币",
@@ -646,6 +682,7 @@ private fun CommentItem(
                     )
                 }
 
+                TextButton(onClick = onReply) {
                 TextButton(onClick = onReply) {
                     Icon(
                         Icons.Default.Reply,
@@ -668,7 +705,7 @@ private fun CommentItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FavoriteBottomSheet(
+fun FavoriteBottomSheet(
     folders: List<Folder>,
     onDismiss: () -> Unit,
     onCreateFolder: (String, String?, Boolean) -> Unit,
@@ -774,7 +811,7 @@ private fun FavoriteBottomSheet(
 }
 
 @Composable
-private fun CreateFolderDialog(
+fun CreateFolderDialog(
     onDismiss: () -> Unit,
     onConfirm: (String, String?, Boolean) -> Unit
 ) {

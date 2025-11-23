@@ -30,10 +30,12 @@ fun SettingsScreen(
     val prefsManager = TranxApp.instance.preferencesManager
     var showServerDialog by remember { mutableStateOf(false) }
     var showColorPicker by remember { mutableStateOf(false) }
+    var showPicuiTokenDialog by remember { mutableStateOf(false) }
     
     var currentThemeMode by remember { mutableStateOf(prefsManager.getThemeMode()) }
     var currentServerUrl by remember { mutableStateOf(prefsManager.getServerUrl()) }
     var useDynamicColor by remember { mutableStateOf(prefsManager.getUseDynamicColor()) }
+    var currentPicuiToken by remember { mutableStateOf(prefsManager.getPicuiToken().orEmpty()) }
     
     Scaffold(
         topBar = {
@@ -161,13 +163,28 @@ fun SettingsScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                ListItem(
-                    headlineContent = { Text("服务器地址") },
-                    supportingContent = { Text(currentServerUrl) },
-                    leadingContent = { Icon(Icons.Default.Cloud, contentDescription = null) },
-                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                    modifier = Modifier.clickable { showServerDialog = true }
-                )
+                Column {
+                    ListItem(
+                        headlineContent = { Text("服务器地址") },
+                        supportingContent = { Text(currentServerUrl) },
+                        leadingContent = { Icon(Icons.Default.Cloud, contentDescription = null) },
+                        trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                        modifier = Modifier.clickable { showServerDialog = true }
+                    )
+                    Divider()
+                    ListItem(
+                        headlineContent = { Text("Picui 图床 Token") },
+                        supportingContent = { 
+                            Text(
+                                if (currentPicuiToken.isBlank()) "未设置"
+                                else "已设置 (点击修改)"
+                            )
+                        },
+                        leadingContent = { Icon(Icons.Default.Image, contentDescription = null) },
+                        trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                        modifier = Modifier.clickable { showPicuiTokenDialog = true }
+                    )
+                }
             }
             
             // 关于
@@ -206,6 +223,18 @@ fun SettingsScreen(
             }
         )
     }
+
+    if (showPicuiTokenDialog) {
+        PicuiTokenDialog(
+            currentToken = currentPicuiToken,
+            onDismiss = { showPicuiTokenDialog = false },
+            onConfirm = { token ->
+                currentPicuiToken = token
+                prefsManager.savePicuiToken(token)
+                showPicuiTokenDialog = false
+            }
+        )
+    }
     
     // 颜色选择器
     if (showColorPicker) {
@@ -217,6 +246,50 @@ fun SettingsScreen(
             }
         )
     }
+}
+
+@Composable
+private fun PicuiTokenDialog(
+    currentToken: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var token by remember { mutableStateOf(currentToken) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Picui 图床 Token") },
+        text = {
+            Column {
+                Text(
+                    text = "从 Picui 个人中心复制 Bearer Token，支持游客上传但推荐配置。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                OutlinedTextField(
+                    value = token,
+                    onValueChange = { token = it },
+                    label = { Text("Bearer Token") },
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(token.trim()) }
+            ) {
+                Text("保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
 }
 
 @Composable
