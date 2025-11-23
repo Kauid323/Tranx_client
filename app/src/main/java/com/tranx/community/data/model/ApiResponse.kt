@@ -328,3 +328,23 @@ data class PicuiLinks(
     @SerializedName("delete_url") val deleteUrl: String?
 )
 
+data class PicuiTokenRequest(
+    @SerializedName("num") val num: Int,
+    @SerializedName("seconds") val seconds: Int
+)
+
+data class PicuiTokenResponse(
+    @SerializedName("status") val status: Boolean,
+    @SerializedName("message") val message: String?,
+    @SerializedName("data") val data: PicuiTokenData?
+)
+
+data class PicuiTokenData(
+    @SerializedName("tokens") val tokens: List<PicuiTokenItem>?
+)
+
+data class PicuiTokenItem(
+    @SerializedName("token") val token: String,
+    @SerializedName("expired_at") val expiredAt: String?
+)
+

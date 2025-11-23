@@ -1,22 +1,30 @@
 package com.tranx.community.ui.screen.board
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.tranx.community.data.api.PicuiUploader
 import com.tranx.community.data.model.Board
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -116,6 +124,30 @@ private fun CreateBoardDialog(
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var avatarUrl by remember { mutableStateOf("") }
+    var isUploading by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            scope.launch {
+                isUploading = true
+                val result = PicuiUploader.uploadImage(context, it)
+                result.onSuccess { url ->
+                    avatarUrl = url
+                    Toast.makeText(context, "头像上传成功", Toast.LENGTH_SHORT).show()
+                }.onFailure { error ->
+                    Toast.makeText(
+                        context,
+                        "上传失败：${error.message ?: "未知错误"}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                isUploading = false
+            }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -144,6 +176,27 @@ private fun CreateBoardDialog(
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 2
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { imagePicker.launch("image/*") },
+                    enabled = !isUploading
+                ) {
+                    Icon(Icons.Default.CloudUpload, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(if (isUploading) "上传中..." else "上传图片到 Picui")
+                }
+                if (avatarUrl.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "当前头像：$avatarUrl",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (isUploading) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
             }
         },
         confirmButton = {
@@ -157,7 +210,7 @@ private fun CreateBoardDialog(
                         )
                     }
                 },
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank() && !isUploading
             ) {
                 Text("创建")
             }
@@ -189,17 +242,27 @@ fun BoardItem(board: Board, onClick: () -> Unit) {
                     contentDescription = board.name,
                     modifier = Modifier
                         .size(48.dp)
-                        .padding(end = 12.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
             } else {
-                Icon(
-                    imageVector = Icons.Default.Forum,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Forum,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
-            
+
+            Spacer(modifier = Modifier.width(12.dp))
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = board.name,
