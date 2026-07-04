@@ -164,7 +164,9 @@ fun AppDetailScreen(
                                 onClick = {
                                     state.app.downloadUrl?.let { url ->
                                         viewModel.recordDownload()
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                        val intent = Intent(context, DownloadBrowserActivity::class.java).apply {
+                                            putExtra("DOWNLOAD_URL", url)
+                                        }
                                         context.startActivity(intent)
                                     } ?: Toast.makeText(context, "下载链接不可用", Toast.LENGTH_SHORT).show()
                                 },

@@ -7,11 +7,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -30,12 +32,11 @@ import com.tranx.community.TranxApp
 import com.tranx.community.data.local.PreferencesManager
 import com.tranx.community.data.model.Comment
 import com.tranx.community.data.model.Post
-import com.tranx.community.data.model.Folder
 import com.tranx.community.ui.screen.post.PostDetailUiState
 import com.tranx.community.ui.screen.post.PostDetailViewModel
 import com.tranx.community.ui.component.CoinAmountDialog
 import com.tranx.community.ui.component.CommentRepliesBottomSheet
-import com.tranx.community.ui.component.CreateFolderDialog
+import com.tranx.community.ui.component.ContentRenderer
 import com.tranx.community.ui.component.FavoriteBottomSheet
 import com.tranx.community.ui.component.formatTime
 import com.tranx.community.ui.theme.TranxCommunityTheme
@@ -261,6 +262,18 @@ fun PostDetailScreen(
                 ) {
                     item {
                         PostContent(post = state.post)
+
+                        if (!state.post.imageUrl.isNullOrEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            AsyncImage(
+                                model = state.post.imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                            )
+                        }
                         Divider(
                             modifier = Modifier.padding(vertical = 16.dp),
                             thickness = 8.dp,
@@ -314,11 +327,12 @@ fun PostDetailScreen(
                                         }
                                     )
                                 },
-                                onCoin = { commentCoinTarget = comment },
-                                viewModel = viewModel,
-                                postId = postId
+                                onCoin = { commentCoinTarget = comment }
                             )
-                            Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                            HorizontalDivider(
+                                modifier = Modifier
+                                    .padding(start = 16.dp + 32.dp + 12.dp, end = 16.dp)
+                            )
                         }
                     }
                 }
@@ -340,7 +354,7 @@ fun PostDetailScreen(
                 Column {
                     if (replyToComment != null) {
                         Text(
-                            text = "回复 @${replyToComment!!.username ?: "匿名用户"}",
+                            text = "回复 @${replyToComment!!.publisher ?: "匿名用户"}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -531,16 +545,13 @@ private fun PostContent(post: Post) {
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Text(text = post.content, style = MaterialTheme.typography.bodyLarge)
-
-        if (!post.imageUrl.isNullOrEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
-            AsyncImage(
-                model = post.imageUrl,
-                contentDescription = null,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        
+        // 使用ContentRenderer根据帖子类型渲染内容
+        ContentRenderer(
+            content = post.content,
+            contentType = post.type,
+            style = MaterialTheme.typography.bodyLarge
+        )
     }
 }
 
@@ -553,156 +564,203 @@ private fun CommentItem(
     onReply: () -> Unit,
     onShowReplies: () -> Unit,
     onDelete: () -> Unit,
-    onCoin: () -> Unit,
-    viewModel: PostDetailViewModel,
-    postId: Int
+    onCoin: () -> Unit
 ) {
-    val context = LocalContext.current
-    Card(
+    val avatarSize = 32.dp
+    val liked = comment.isLiked == true
+ 
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
         ) {
-            // 评论头部
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            if (!comment.avatar.isNullOrBlank()) {
+                AsyncImage(
+                    model = comment.avatar,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(avatarSize)
+                        .clip(CircleShape)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(avatarSize)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+ 
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text(
-                        text = comment.username ?: "匿名用户",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        text = comment.publisher ?: "匿名用户",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
                     )
                     if (comment.isAuthor) {
-                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "楼主",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "#${comment.floor ?: 0}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-
-                // 删除按钮（仅作者可见）
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "删除",
-                        modifier = Modifier.size(16.dp)
+ 
+                if (!comment.content.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    ContentRenderer(
+                        content = comment.content,
+                        contentType = "markdown",
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 评论内容
-            Text(
-                text = comment.content ?: "",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 显示前3个子评论
-            if (replies.isNotEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .padding(8.dp)
-                ) {
-                    replies.take(3).forEach { reply ->
-                        Row {
-                            Text(
-                                text = "${reply.username ?: "匿名用户"}：",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = reply.content ?: "",
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        if (reply != replies.take(3).last()) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                        }
-                    }
-                }
-
-                if ((comment.replyCount ?: 0) > 0) {
-                    TextButton(
-                        onClick = onShowReplies,
-                        modifier = Modifier.padding(start = 8.dp)
+ 
+                if (replies.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                            .padding(8.dp)
                     ) {
-                        Text("查看更多回复 (${comment.replyCount})")
+                        replies.take(3).forEachIndexed { index, reply ->
+                            Row {
+                                Text(
+                                    text = "${reply.publisher ?: "匿名用户"}：",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = reply.content ?: "",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            if (index != replies.take(3).lastIndex) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+                        }
+                    }
+ 
+                    if ((comment.replyCount ?: 0) > 0) {
+                        TextButton(
+                            onClick = onShowReplies,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                        ) {
+                            Text(
+                                text = "查看更多回复 (${comment.replyCount})",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
                 }
+ 
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = onLike,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                    ) {
+                        Icon(
+                            if (liked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                            contentDescription = "点赞",
+                            modifier = Modifier.size(14.dp),
+                            tint = if (liked) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${comment.likes ?: 0}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+ 
+                    TextButton(
+                        onClick = onCoin,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.MonetizationOn,
+                            contentDescription = "投币",
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if ((comment.coins ?: 0) > 0) (comment.coins ?: 0).toString() else "投币",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+ 
+                    TextButton(
+                        onClick = onReply,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Reply,
+                            contentDescription = "回复",
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "回复",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+ 
+                    Spacer(modifier = Modifier.weight(1f))
+ 
+                    if (comment.isMyComment == true) {
+                        IconButton(
+                            onClick = onDelete,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "删除",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+ 
+                Text(
+                    text = formatTime(comment.publishTime ?: ""),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-
-            // 操作按钮
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                TextButton(onClick = onLike) {
-                    Icon(
-                        Icons.Default.ThumbUp,
-                        contentDescription = "点赞",
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("${comment.likes ?: 0}")
-                }
-
-                TextButton(onClick = onCoin) {
-                    Icon(
-                        Icons.Default.MonetizationOn,
-                        contentDescription = "投币",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.tertiary
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if ((comment.coins ?: 0) > 0) (comment.coins ?: 0).toString() else "投币",
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
-                }
-
-                TextButton(onClick = onReply) {
-                    Icon(
-                        Icons.Default.Reply,
-                        contentDescription = "回复",
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("回复")
-                }
-            }
-
-            Text(
-                text = formatTime(comment.publishTime ?: ""),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

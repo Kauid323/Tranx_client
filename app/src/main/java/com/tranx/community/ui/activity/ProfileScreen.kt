@@ -2,6 +2,8 @@ package com.tranx.community.ui.activity
 
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -15,12 +17,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.tranx.community.data.model.User
 import com.tranx.community.ui.screen.profile.ProfileUiState
 import com.tranx.community.ui.screen.profile.ProfileViewModel
-import com.tranx.community.ui.theme.TranxCommunityTheme
-import kotlin.math.floor
-import kotlin.math.sqrt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,10 +75,12 @@ fun ProfileScreen(
             }
 
             is ProfileUiState.Success -> {
+                val scrollState = rememberScrollState()
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
+                        .verticalScroll(scrollState)
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -95,6 +95,11 @@ fun ProfileScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clickable {
+                                    val intent = Intent(context, UserDetailActivity::class.java)
+                                    intent.putExtra(UserDetailActivity.EXTRA_USER_ID, state.user.id)
+                                    context.startActivity(intent)
+                                }
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -243,22 +248,48 @@ fun ProfileScreen(
                                 headlineContent = { Text("我的帖子") },
                                 leadingContent = { Icon(Icons.Default.Article, contentDescription = null) },
                                 trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                                modifier = Modifier.clickable { /* TODO */ }
+                                modifier = Modifier.clickable {
+                                    context.startActivity(Intent(context, MyPostsActivity::class.java))
+                                }
                             )
                             HorizontalDivider()
                             ListItem(
                                 headlineContent = { Text("我的收藏") },
                                 leadingContent = { Icon(Icons.Default.Star, contentDescription = null) },
                                 trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                                modifier = Modifier.clickable { /* TODO */ }
+                                modifier = Modifier.clickable {
+                                    context.startActivity(Intent(context, MyFavoritesActivity::class.java))
+                                }
                             )
                             HorizontalDivider()
                             ListItem(
                                 headlineContent = { Text("浏览历史") },
                                 leadingContent = { Icon(Icons.Default.History, contentDescription = null) },
                                 trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                                modifier = Modifier.clickable { /* TODO */ }
+                                modifier = Modifier.clickable {
+                                    context.startActivity(Intent(context, BrowsingHistoryActivity::class.java))
+                                }
                             )
+                            HorizontalDivider()
+                            ListItem(
+                                headlineContent = { Text("下载任务") },
+                                leadingContent = { Icon(Icons.Default.Download, contentDescription = null) },
+                                trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                                modifier = Modifier.clickable {
+                                    context.startActivity(Intent(context, DownloadTasksActivity::class.java))
+                                }
+                            )
+                            if (state.user.level >= 80) {
+                                HorizontalDivider()
+                                ListItem(
+                                    headlineContent = { Text("应用审核") },
+                                    leadingContent = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null) },
+                                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                                    modifier = Modifier.clickable {
+                                        context.startActivity(Intent(context, AppReviewActivity::class.java))
+                                    }
+                                )
+                            }
                             HorizontalDivider()
                             ListItem(
                                 headlineContent = { Text("上传应用") },

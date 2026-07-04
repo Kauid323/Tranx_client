@@ -3,10 +3,8 @@ package com.tranx.community.ui.activity
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,7 +20,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tranx.community.TranxApp
-import com.tranx.community.data.api.PicuiUploader
 import com.tranx.community.data.api.RetrofitClient
 import com.tranx.community.data.local.PreferencesManager
 import com.tranx.community.data.model.CreatePostRequest
@@ -82,8 +79,6 @@ fun CreatePostScreen(
     var showBoardSelector by remember { mutableStateOf(false) }
     var postType by remember { mutableStateOf("text") }
     var imageUrl by remember { mutableStateOf<String?>(null) }
-    var isUploadingImage by remember { mutableStateOf(false) }
-    var uploadError by remember { mutableStateOf<String?>(null) }
     var isEditMode by remember { mutableStateOf(editingPostId != null) }
     val scope = rememberCoroutineScope()
 
@@ -125,27 +120,6 @@ fun CreatePostScreen(
         } catch (_: Exception) {
         } finally {
             isSubmitting = false
-        }
-    }
-
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri ?: return@rememberLauncherForActivityResult
-        scope.launch {
-            isUploadingImage = true
-            uploadError = null
-            val result = PicuiUploader.uploadImage(context, uri)
-            result
-                .onSuccess { uploadedUrl ->
-                    imageUrl = uploadedUrl
-                    Toast.makeText(context, "图片上传成功", Toast.LENGTH_SHORT).show()
-                }
-                .onFailure {
-                    uploadError = it.message
-                    Toast.makeText(context, "上传失败: ${it.message}", Toast.LENGTH_SHORT).show()
-                }
-            isUploadingImage = false
         }
     }
 
@@ -208,7 +182,7 @@ fun CreatePostScreen(
                 }
             )
         }
-        ) { paddingValues ->
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -273,41 +247,23 @@ fun CreatePostScreen(
             Divider(modifier = Modifier.padding(vertical = 8.dp))
 
             Text("封面图片 (可选)", style = MaterialTheme.typography.titleMedium)
-            Row(
+            OutlinedTextField(
+                value = imageUrl.orEmpty(),
+                onValueChange = { input ->
+                    imageUrl = input.trim().ifBlank { null }
+                },
+                label = { Text("图片URL") },
+                placeholder = { Text("https://example.com/image.jpg") },
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                FilledTonalButton(
-                    onClick = { imagePickerLauncher.launch("image/*") },
-                    enabled = !isUploadingImage
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("上传图片")
-                }
-                if (imageUrl != null) {
-                    TextButton(onClick = { imageUrl = null }) {
-                        Text("移除")
+                singleLine = true,
+                trailingIcon = {
+                    if (!imageUrl.isNullOrBlank()) {
+                        IconButton(onClick = { imageUrl = null }) {
+                            Icon(Icons.Default.Clear, contentDescription = "清空")
+                        }
                     }
                 }
-            }
-
-            if (isUploadingImage) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
-            }
-
-            uploadError?.let {
-                Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
+            )
 
             imageUrl?.let { url ->
                 Card(

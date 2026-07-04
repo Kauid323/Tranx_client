@@ -41,26 +41,9 @@ class ProfileViewModel : ViewModel() {
                     throw Exception(userResponse.message)
                 }
 
-                // 从返回的data中提取user信息
-                val userData = userResponse.data["user"] as? Map<*, *>
-                if (userData != null) {
-                    val user = User(
-                        id = (userData["id"] as? Double)?.toInt() ?: 0,
-                        username = userData["username"] as? String ?: "",
-                        email = userData["email"] as? String,
-                        level = (userData["level"] as? Double)?.toInt() ?: 0,
-                        userLevel = (userData["user_level"] as? Double)?.toInt(),
-                        exp = (userData["exp"] as? Double)?.toInt(),
-                        coins = (userData["coins"] as? Double)?.toInt() ?: 0,
-                        avatar = userData["avatar"] as? String,
-                        createdAt = userData["created_at"] as? String,
-                        updatedAt = userData["updated_at"] as? String
-                    )
-                    // 更新本地保存的用户信息
-                    prefsManager.saveUser(user)
-                } else {
-                    throw Exception("用户数据解析失败")
-                }
+                // 直接使用 Data Class，不再手动解析 Map
+                val user = userResponse.data.user
+                prefsManager.saveUser(user)
                 
                 val currentUser = prefsManager.getUser() ?: throw Exception("用户信息不存在")
 

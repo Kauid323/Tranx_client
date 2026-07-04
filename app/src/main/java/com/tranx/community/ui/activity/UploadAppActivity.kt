@@ -37,6 +37,7 @@ import com.tranx.community.TranxApp
 import com.tranx.community.data.api.RetrofitClient
 import com.tranx.community.data.local.PreferencesManager
 import com.tranx.community.data.model.UploadAppRequest
+import com.tranx.community.data.model.ValueLabelOption
 import com.tranx.community.ui.theme.TranxCommunityTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -79,10 +80,10 @@ class UploadAppActivity : ComponentActivity() {
 fun UploadAppScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var showBottomSheet by remember { mutableStateOf(false) }
     var showInstalledApps by remember { mutableStateOf(false) }
-    var selectedApp by remember { mutableStateOf<InstalledApp?>(null) }
+    var showBottomSheet by remember { mutableStateOf(false) }
     var customUrl by remember { mutableStateOf("") }
+    var selectedApp by remember { mutableStateOf<InstalledApp?>(null) }
     var showUploadDialog by remember { mutableStateOf(false) }
     
     // 权限状态 - 仅在Android 10及以下需要存储权限
@@ -96,7 +97,6 @@ fun UploadAppScreen(onBack: () -> Unit) {
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            // 处理选择的APK文件
             scope.launch {
                 handleSelectedApk(context, uri) { appInfo ->
                     selectedApp = InstalledApp(
@@ -105,7 +105,7 @@ fun UploadAppScreen(onBack: () -> Unit) {
                         version = appInfo.version,
                         versionCode = appInfo.versionCode,
                         size = appInfo.size,
-                        iconUrl = null,
+                        iconUrl = "",
                         apkPath = uri.toString()
                     )
                     showUploadDialog = true
@@ -135,100 +135,89 @@ fun UploadAppScreen(onBack: () -> Unit) {
         ) {
             item {
                 Text(
-                    "选择上传方式",
+                    "应用来源",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
             }
             
-            // 从已安装应用提取
             item {
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showInstalledApps = true }
-                ) {
-                    ListItem(
-                        headlineContent = { Text("从已安装应用提取") },
-                        supportingContent = { Text("选择设备上已安装的应用") },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.Apps,
-                                contentDescription = null,
-                                modifier = Modifier.size(40.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            Icon(Icons.Default.ChevronRight, contentDescription = null)
-                        }
-                    )
-                }
-            }
-            
-            // 从本地存储选择
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            if (!needStoragePermission || 
-                                storagePermissionState?.status?.isGranted == true) {
-                                filePickerLauncher.launch("application/vnd.android.package-archive")
-                            } else {
-                                storagePermissionState?.launchPermissionRequest()
-                            }
-                        }
-                ) {
-                    ListItem(
-                        headlineContent = { Text("从本地存储选择") },
-                        supportingContent = { Text("选择存储中的APK文件") },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.Folder,
-                                contentDescription = null,
-                                modifier = Modifier.size(40.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            Icon(Icons.Default.ChevronRight, contentDescription = null)
-                        }
-                    )
-                }
-            }
-            
-            // 自定义下载URL
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showBottomSheet = true }
-                ) {
-                    ListItem(
-                        headlineContent = { Text("自定义下载URL") },
-                        supportingContent = { Text("提供应用的下载链接") },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.Link,
-                                contentDescription = null,
-                                modifier = Modifier.size(40.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            Icon(Icons.Default.ChevronRight, contentDescription = null)
-                        }
-                    )
-                }
-            }
-            
-            // 说明
-            item {
-                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            onClick = { showInstalledApps = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Icon(Icons.Default.Apps, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("选择已安装应用")
+                        }
+                        
+                        OutlinedButton(
+                            onClick = {
+                                if (!needStoragePermission || 
+                                    storagePermissionState?.status?.isGranted == true) {
+                                    filePickerLauncher.launch("application/vnd.android.package-archive")
+                                } else {
+                                    storagePermissionState?.launchPermissionRequest()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Icon(Icons.Default.FolderOpen, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("从本地文件选择 (APK)")
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        
+                        Text("或者直接输入下载链接", style = MaterialTheme.typography.labelMedium)
+                        OutlinedTextField(
+                            value = customUrl,
+                            onValueChange = { customUrl = it },
+                            label = { Text("下载 URL") },
+                            placeholder = { Text("https://example.com/app.apk") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            trailingIcon = {
+                                IconButton(onClick = {
+                                    if (customUrl.isNotBlank()) {
+                                        selectedApp = InstalledApp(
+                                            packageName = "",
+                                            name = "新应用",
+                                            version = "1.0.0",
+                                            versionCode = 1,
+                                            size = 0,
+                                            iconUrl = "",
+                                            apkPath = customUrl
+                                        )
+                                        showUploadDialog = true
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Send, contentDescription = "确定")
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+            
+            item {
+                Card(
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                    ),
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -237,16 +226,13 @@ fun UploadAppScreen(onBack: () -> Unit) {
                         Text(
                             "上传须知",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             "• 上传的应用需要经过审核才能在应用市场显示\n" +
                             "• 请确保应用安全无毒，不包含恶意代码\n" +
-                            "• 请勿上传侵权或违法应用\n" +
-                            "• 上传后可在个人中心查看审核状态",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            "• 请务必填写正确的图标 URL 和至少一张截图 URL",
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
@@ -599,7 +585,17 @@ fun UploadInfoScreen(
     onBack: () -> Unit,
     onUpload: (UploadAppRequest) -> Unit
 ) {
+    val context = LocalContext.current
+
+    var packageName by remember { mutableStateOf(app.packageName) }
     var name by remember { mutableStateOf(app.name) }
+    var version by remember { mutableStateOf(app.version) }
+    var versionCode by remember { mutableStateOf(app.versionCode) }
+    val size = app.size
+
+    var iconUrl by remember { mutableStateOf(app.iconUrl ?: "") }
+    var screenshotsText by remember { mutableStateOf("") }
+    var downloadUrl by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var updateContent by remember { mutableStateOf("初始版本") }
     var developerName by remember { mutableStateOf("") }
@@ -616,6 +612,11 @@ fun UploadInfoScreen(
     var adLevel by remember { mutableStateOf("none") }
     var paymentType by remember { mutableStateOf("free") }
     var operationType by remember { mutableStateOf("indie") }
+
+    var channelOptions by remember { mutableStateOf<List<ValueLabelOption>>(emptyList()) }
+    var adLevelOptions by remember { mutableStateOf<List<ValueLabelOption>>(emptyList()) }
+    var paymentTypeOptions by remember { mutableStateOf<List<ValueLabelOption>>(emptyList()) }
+    var operationTypeOptions by remember { mutableStateOf<List<ValueLabelOption>>(emptyList()) }
     
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -633,23 +634,58 @@ fun UploadInfoScreen(
             }
         }
     }
-    
-    // 加载子分类
-    LaunchedEffect(selectedMainCategory) {
-        if (selectedMainCategory.isNotEmpty()) {
-            scope.launch {
-                try {
-                    val response = RetrofitClient.getApiService().getSubCategories(selectedMainCategory)
-                    if (response.code == 200) {
-                        subCategories = response.data?.subCategories ?: emptyList()
+
+    // 加载上传选项（渠道/广告/付费/运营方式）
+    LaunchedEffect(Unit) {
+        scope.launch {
+            try {
+                val api = RetrofitClient.getApiService()
+                // 这些接口不需要 Token，且返回结构稳定，避免 getUploadOptions 返回 Map 导致的类型推断问题
+                val chResp = api.getAppChannels()
+                if (chResp.code == 200) {
+                    channelOptions = (chResp.data ?: emptyList()).map { m ->
+                        ValueLabelOption(value = m["value"] ?: "", label = m["label"] ?: (m["value"] ?: ""))
                     }
-                } catch (e: Exception) {
-                    // 忽略错误
                 }
+
+                val adResp = api.getAppAdLevels()
+                if (adResp.code == 200) {
+                    adLevelOptions = (adResp.data ?: emptyList()).map { m ->
+                        ValueLabelOption(value = m["value"] ?: "", label = m["label"] ?: (m["value"] ?: ""))
+                    }
+                }
+
+                val payResp = api.getAppPaymentTypes()
+                if (payResp.code == 200) {
+                    paymentTypeOptions = (payResp.data ?: emptyList()).map { m ->
+                        ValueLabelOption(value = m["value"] ?: "", label = m["label"] ?: (m["value"] ?: ""))
+                    }
+                }
+
+                val opResp = api.getAppOperationTypes()
+                if (opResp.code == 200) {
+                    operationTypeOptions = (opResp.data ?: emptyList()).map { m ->
+                        ValueLabelOption(value = m["value"] ?: "", label = m["label"] ?: (m["value"] ?: ""))
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
-    
+
+    LaunchedEffect(selectedMainCategory) {
+        if (selectedMainCategory.isNotBlank()) {
+            try {
+                val api = RetrofitClient.getApiService()
+                val resp = api.getSubCategories(selectedMainCategory)
+                subCategories = resp.data?.subCategories ?: emptyList()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -662,37 +698,41 @@ fun UploadInfoScreen(
                 actions = {
                     TextButton(
                         onClick = {
-                            if (name.isNotBlank() && selectedMainCategory.isNotEmpty() && 
-                                selectedSubCategory.isNotEmpty() && developerName.isNotBlank()) {
-                                val request = UploadAppRequest(
-                                    packageName = app.packageName,
+                            if (name.isBlank() || selectedMainCategory.isBlank() || iconUrl.isBlank() || screenshotsText.isBlank() || downloadUrl.isBlank()) {
+                                Toast.makeText(context, "请补全必填信息 (*)", Toast.LENGTH_SHORT).show()
+                                return@TextButton
+                            }
+                            
+
+                            val screenshots = screenshotsText.split("\n")
+                                .map { it.trim() }
+                                .filter { it.isNotBlank() }
+
+                            onUpload(
+                                UploadAppRequest(
+                                    packageName = packageName,
                                     name = name,
-                                    iconUrl = app.iconUrl,
-                                    version = app.version,
-                                    versionCode = app.versionCode,
-                                    size = app.size,
+                                    iconUrl = iconUrl,
+                                    version = version,
+                                    versionCode = versionCode,
+                                    size = size,
                                     channel = channel,
                                     mainCategory = selectedMainCategory,
                                     subCategory = selectedSubCategory,
-                                    screenshots = null,
+                                    screenshots = screenshots,
                                     description = description.ifBlank { null },
                                     shareDesc = shareDesc.ifBlank { null },
                                     updateContent = updateContent.ifBlank { null },
-                                    developerName = developerName.ifBlank { null },
+                                    developer_name = developerName.ifBlank { null },
                                     adLevel = adLevel,
                                     paymentType = paymentType,
                                     operationType = operationType,
-                                    downloadUrl = app.apkPath
+                                    downloadUrl = downloadUrl
                                 )
-                                onUpload(request)
-                            }
-                        },
-                        enabled = !isLoading && name.isNotBlank() && 
-                                selectedMainCategory.isNotEmpty() && 
-                                selectedSubCategory.isNotEmpty() &&
-                                developerName.isNotBlank()
+                            )
+                        }
                     ) {
-                        Text("上传")
+                        Text("提交审核", fontWeight = FontWeight.Bold)
                     }
                 }
             )
@@ -701,107 +741,217 @@ fun UploadInfoScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            // 基本信息
             item {
-                Text(
-                    "基本信息",
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("基本信息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
-            
+
             item {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("应用名称 *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
-            
-            item {
-                OutlinedTextField(
-                    value = developerName,
-                    onValueChange = { developerName = it },
-                    label = { Text("开发者名称 *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
-            
-            // 分类选择
-            item {
-                Text(
-                    "分类选择",
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-            
-            item {
-                var mainCategoryExpanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = mainCategoryExpanded,
-                    onExpandedChange = { mainCategoryExpanded = it }
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
-                        value = selectedMainCategory,
-                        onValueChange = { },
-                        readOnly = true,
-                        label = { Text("主分类 *") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = mainCategoryExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor()
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("应用名称 *") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
-                    ExposedDropdownMenu(
+                    
+                    OutlinedTextField(
+                        value = packageName,
+                        onValueChange = { packageName = it },
+                        label = { Text("包名 *") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = version,
+                            onValueChange = { version = it },
+                            label = { Text("版本名 *") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = versionCode.toString(),
+                            onValueChange = { versionCode = it.toIntOrNull() ?: 0 },
+                            label = { Text("版本号 *") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                    }
+                }
+            }
+
+            item {
+                Text("媒体资源", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = iconUrl,
+                        onValueChange = { iconUrl = it },
+                        label = { Text("图标 URL *") },
+                        placeholder = { Text("https://example.com/icon.png") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    
+                    OutlinedTextField(
+                        value = screenshotsText,
+                        onValueChange = { screenshotsText = it },
+                        label = { Text("截图 URL (一行一个) *") },
+                        placeholder = { Text("https://example.com/screen1.png\nhttps://example.com/screen2.png") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3
+                    )
+
+                    OutlinedTextField(
+                        value = downloadUrl,
+                        onValueChange = { downloadUrl = it },
+                        label = { Text("下载 URL *") },
+                        placeholder = { Text("https://example.com/app.apk") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            }
+
+            item {
+                Text("分类与属性", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    var mainCategoryExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
                         expanded = mainCategoryExpanded,
-                        onDismissRequest = { mainCategoryExpanded = false }
+                        onExpandedChange = { mainCategoryExpanded = it }
                     ) {
-                        categories.forEach { category ->
-                            DropdownMenuItem(
-                                text = { Text(category) },
-                                onClick = { 
-                                    selectedMainCategory = category
-                                    selectedSubCategory = ""
-                                    mainCategoryExpanded = false
-                                }
+                        OutlinedTextField(
+                            value = selectedMainCategory,
+                            onValueChange = { },
+                            readOnly = true,
+                            label = { Text("主分类 *") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = mainCategoryExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = mainCategoryExpanded,
+                            onDismissRequest = { mainCategoryExpanded = false }
+                        ) {
+                            categories.forEach { category ->
+                                DropdownMenuItem(
+                                    text = { Text(category) },
+                                    onClick = { 
+                                        selectedMainCategory = category
+                                        selectedSubCategory = ""
+                                        mainCategoryExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    if (subCategories.isNotEmpty()) {
+                        var subCategoryExpanded by remember { mutableStateOf(false) }
+                        ExposedDropdownMenuBox(
+                            expanded = subCategoryExpanded,
+                            onExpandedChange = { subCategoryExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = selectedSubCategory,
+                                onValueChange = { },
+                                readOnly = true,
+                                label = { Text("子分类 *") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subCategoryExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
                             )
+                            ExposedDropdownMenu(
+                                expanded = subCategoryExpanded,
+                                onDismissRequest = { subCategoryExpanded = false }
+                            ) {
+                                subCategories.forEach { category ->
+                                    DropdownMenuItem(
+                                        text = { Text(category) },
+                                        onClick = { 
+                                            selectedSubCategory = category
+                                            subCategoryExpanded = false
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
-            
-            if (subCategories.isNotEmpty()) {
-                item {
-                    var subCategoryExpanded by remember { mutableStateOf(false) }
+
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // 渠道选择
+                    var channelExpanded by remember { mutableStateOf(false) }
                     ExposedDropdownMenuBox(
-                        expanded = subCategoryExpanded,
-                        onExpandedChange = { subCategoryExpanded = it }
+                        expanded = channelExpanded,
+                        onExpandedChange = { channelExpanded = it },
+                        modifier = Modifier.weight(1f)
                     ) {
+                        val selectedLabel = channelOptions.find { it.value == channel }?.label ?: channel
                         OutlinedTextField(
-                            value = selectedSubCategory,
-                            onValueChange = { },
+                            value = selectedLabel,
+                            onValueChange = {} ,
                             readOnly = true,
-                            label = { Text("子分类 *") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subCategoryExpanded) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
+                            label = { Text("渠道") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = channelExpanded) },
+                            modifier = Modifier.menuAnchor()
                         )
                         ExposedDropdownMenu(
-                            expanded = subCategoryExpanded,
-                            onDismissRequest = { subCategoryExpanded = false }
+                            expanded = channelExpanded,
+                            onDismissRequest = { channelExpanded = false }
                         ) {
-                            subCategories.forEach { category ->
+                            channelOptions.forEach { opt ->
                                 DropdownMenuItem(
-                                    text = { Text(category) },
-                                    onClick = { 
-                                        selectedSubCategory = category
-                                        subCategoryExpanded = false
+                                    text = { Text(opt.label) },
+                                    onClick = {
+                                        channel = opt.value
+                                        channelExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // 广告
+                    var adExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = adExpanded,
+                        onExpandedChange = { adExpanded = it },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        val selectedLabel = adLevelOptions.find { it.value == adLevel }?.label ?: adLevel
+                        OutlinedTextField(
+                            value = selectedLabel,
+                            onValueChange = {} ,
+                            readOnly = true,
+                            label = { Text("广告") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = adExpanded) },
+                            modifier = Modifier.menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = adExpanded,
+                            onDismissRequest = { adExpanded = false }
+                        ) {
+                            adLevelOptions.forEach { opt ->
+                                DropdownMenuItem(
+                                    text = { Text(opt.label) },
+                                    onClick = {
+                                        adLevel = opt.value
+                                        adExpanded = false
                                     }
                                 )
                             }
@@ -809,182 +959,46 @@ fun UploadInfoScreen(
                     }
                 }
             }
-            
-            // 应用属性
-            item {
-                Text(
-                    "应用属性",
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-            
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // 渠道
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("渠道", style = MaterialTheme.typography.bodyMedium)
-                        SingleChoiceSegmentedButtonRow(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            SegmentedButton(
-                                selected = channel == "official",
-                                onClick = { channel = "official" },
-                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-                            ) {
-                                Text("官方", style = MaterialTheme.typography.bodySmall)
-                            }
-                            SegmentedButton(
-                                selected = channel == "custom",
-                                onClick = { channel = "custom" },
-                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-                            ) {
-                                Text("定制", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
-                    
-                    // 广告
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("广告", style = MaterialTheme.typography.bodyMedium)
-                        SingleChoiceSegmentedButtonRow(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            SegmentedButton(
-                                selected = adLevel == "none",
-                                onClick = { adLevel = "none" },
-                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-                            ) {
-                                Text("无", style = MaterialTheme.typography.bodySmall)
-                            }
-                            SegmentedButton(
-                                selected = adLevel == "few",
-                                onClick = { adLevel = "few" },
-                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-                            ) {
-                                Text("少量", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
-                }
-            }
-            
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // 付费类型
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("付费", style = MaterialTheme.typography.bodyMedium)
-                        SingleChoiceSegmentedButtonRow(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            SegmentedButton(
-                                selected = paymentType == "free",
-                                onClick = { paymentType = "free" },
-                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-                            ) {
-                                Text("免费", style = MaterialTheme.typography.bodySmall)
-                            }
-                            SegmentedButton(
-                                selected = paymentType == "iap",
-                                onClick = { paymentType = "iap" },
-                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-                            ) {
-                                Text("内购", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
-                    
-                    // 运营方式
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("运营", style = MaterialTheme.typography.bodyMedium)
-                        SingleChoiceSegmentedButtonRow(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            SegmentedButton(
-                                selected = operationType == "indie",
-                                onClick = { operationType = "indie" },
-                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-                            ) {
-                                Text("独立", style = MaterialTheme.typography.bodySmall)
-                            }
-                            SegmentedButton(
-                                selected = operationType == "team",
-                                onClick = { operationType = "team" },
-                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-                            ) {
-                                Text("团队", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // 详细信息
-            item {
-                Text(
-                    "详细信息",
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-            
+
             item {
                 OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("应用介绍") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
-                    maxLines = 5
-                )
-            }
-            
-            item {
-                OutlinedTextField(
-                    value = updateContent,
-                    onValueChange = { updateContent = it },
-                    label = { Text("更新内容") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2,
-                    maxLines = 4
-                )
-            }
-            
-            item {
-                OutlinedTextField(
-                    value = shareDesc,
-                    onValueChange = { shareDesc = it },
-                    label = { Text("分享描述") },
-                    placeholder = { Text("分享给朋友时显示的描述") },
+                    value = developerName,
+                    onValueChange = { developerName = it },
+                    label = { Text("开发者名称") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
             }
-            
-            // 应用信息预览
+
             item {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                Text("应用介绍", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("详细介绍") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3
                     )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            "应用信息",
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                        Text("包名: ${app.packageName}", style = MaterialTheme.typography.bodySmall)
-                        Text("版本: ${app.version} (${app.versionCode})", style = MaterialTheme.typography.bodySmall)
-                        Text("大小: ${formatFileSize(app.size)}", style = MaterialTheme.typography.bodySmall)
-                        Text("下载URL: ${if (app.apkPath.startsWith("http")) app.apkPath else "本地文件"}", style = MaterialTheme.typography.bodySmall)
-                    }
+                    
+                    OutlinedTextField(
+                        value = updateContent,
+                        onValueChange = { updateContent = it },
+                        label = { Text("更新内容") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2
+                    )
+                    
+                    OutlinedTextField(
+                        value = shareDesc,
+                        onValueChange = { shareDesc = it },
+                        label = { Text("分享描述") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
                 }
             }
         }

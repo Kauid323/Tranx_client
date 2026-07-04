@@ -71,9 +71,74 @@
             android:theme="@style/Theme.TranxCommunity" />
 
         <activity
+            android:name=".ui.activity.UserDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TranxCommunity" />
+
+        <activity
             android:name=".ui.activity.BoardDetailActivity"
             android:exported="false"
             android:theme="@style/Theme.TranxCommunity" />
+
+        <activity
+            android:name=".ui.activity.MyPostsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TranxCommunity" />
+
+        <activity
+            android:name=".ui.activity.MyFavoritesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TranxCommunity" />
+
+        <activity
+            android:name=".ui.activity.BrowsingHistoryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TranxCommunity" />
+
+        <activity
+            android:name=".ui.activity.FolderDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TranxCommunity" />
+
+        <activity
+            android:name=".ui.activity.AppReviewActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TranxCommunity" />
+
+        <activity
+            android:name=".ui.activity.DownloadTasksActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TranxCommunity" />
+
+        <activity
+            android:name=".ui.activity.DownloadBrowserActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TranxCommunity" />
+            
+        <activity
+            android:name=".ui.activity.UploadTasksActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TranxCommunity" />
+
+        <activity
+            android:name=".ui.activity.PendingAppReviewsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TranxCommunity" />
+
+        <activity
+            android:name=".ui.activity.UploadTaskDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TranxCommunity" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

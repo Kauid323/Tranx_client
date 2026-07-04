@@ -16,13 +16,19 @@ interface ApiService {
 
     // 用户相关
     @GET("/api/me")
-    suspend fun getCurrentUser(@Header("Token") token: String): ApiResponse<Map<String, Any>>
+    suspend fun getCurrentUser(@Header("Token") token: String): ApiResponse<UserDetailResponse>
 
     @GET("/api/users/{id}")
     suspend fun getUser(
         @Header("Token") token: String,
         @Path("id") userId: Int
     ): ApiResponse<Map<String, Any>>
+
+    @GET("/api/users/{id}/detail")
+    suspend fun getUserDetail(
+        @Header("Token") token: String,
+        @Path("id") userId: Int
+    ): ApiResponse<UserDetailResponse>
 
     @GET("/api/users")
     suspend fun getUserList(
@@ -221,6 +227,18 @@ interface ApiService {
     @GET("/api/apps/categories")
     suspend fun getAppCategories(): ApiResponse<List<String>>
 
+    @GET("/api/apps/channels")
+    suspend fun getAppChannels(): ApiResponse<List<Map<String, String>>>
+
+    @GET("/api/apps/ad-levels")
+    suspend fun getAppAdLevels(): ApiResponse<List<Map<String, String>>>
+
+    @GET("/api/apps/payment-types")
+    suspend fun getAppPaymentTypes(): ApiResponse<List<Map<String, String>>>
+
+    @GET("/api/apps/operation-types")
+    suspend fun getAppOperationTypes(): ApiResponse<List<Map<String, String>>>
+
     @GET("/api/apps/subcategories")
     suspend fun getSubCategories(
         @Query("main_category") mainCategory: String
@@ -275,9 +293,52 @@ interface ApiService {
     ): ApiResponse<UploadTaskListResponse>
 
     @GET("/api/apps/upload/{task_id}")
-    suspend fun getUploadTask(
+    suspend fun getUploadTaskDetail(
         @Header("Token") token: String,
         @Path("task_id") taskId: Int
     ): ApiResponse<UploadTask>
+
+    @GET("/api/apps/pending")
+    suspend fun getPendingApps(
+        @Header("Token") token: String,
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 20
+    ): ApiResponse<UploadTaskListResponse>
+
+    @POST("/api/apps/review")
+    suspend fun reviewApp(
+        @Header("Token") token: String,
+        @Body request: ReviewRequest
+    ): ApiResponse<Unit>
+
+    @GET("/api/posts/my")
+    suspend fun getMyPosts(
+        @Header("Token") token: String,
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 20,
+        @Query("board_id") boardId: Int? = null,
+        @Query("sort") sort: String? = null
+    ): ApiResponse<PostListResponse>
+
+    @GET("/api/history")
+    suspend fun getBrowsingHistory(
+        @Header("Token") token: String,
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 20
+    ): ApiResponse<HistoryListResponse>
+
+    @GET("/api/folders/{id}/posts")
+    suspend fun getFolderPosts(
+        @Header("Token") token: String,
+        @Path("id") folderId: Int,
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 20
+    ): ApiResponse<FolderPostsResponse>
 }
+
+data class ReviewRequest(
+    @com.google.gson.annotations.SerializedName("task_id") val taskId: Int,
+    @com.google.gson.annotations.SerializedName("accept") val accept: Int,
+    @com.google.gson.annotations.SerializedName("reject_reason") val rejectReason: String? = null
+)
 

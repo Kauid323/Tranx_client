@@ -97,6 +97,9 @@ dependencies {
     // Permissions - Accompanist权限库
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
     
+    // Markdown渲染库
+    implementation("com.github.jeziellago:compose-markdown:0.5.8")
+    
     // Testing - 更新到兼容版本
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

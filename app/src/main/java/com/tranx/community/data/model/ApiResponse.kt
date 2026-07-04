@@ -65,7 +65,9 @@ data class Post(
     @SerializedName("view_count") val viewCount: Int = 0,
     @SerializedName("last_reply_time") val lastReplyTime: String? = null,
     @SerializedName("is_liked") val isLiked: Boolean? = null,
-    @SerializedName("is_favorited") val isFavorited: Boolean? = null
+    @SerializedName("is_favorited") val isFavorited: Boolean? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null
 )
 
 data class PostListResponse(
@@ -104,13 +106,14 @@ data class Comment(
     @SerializedName("post_id") val postId: Int,
     @SerializedName("user_id") val userId: Int,
     @SerializedName("parent_id") val parentId: Int? = null,
-    @SerializedName("username") val username: String? = null,
+    @SerializedName("publisher") val publisher: String? = null,
     @SerializedName("avatar") val avatar: String? = null,
     @SerializedName("content") val content: String? = null,
     @SerializedName("publish_time") val publishTime: String? = null,
     @SerializedName("floor") val floor: Int? = null,
     @SerializedName("is_author") val isAuthor: Boolean = false,
     @SerializedName("is_liked") val isLiked: Boolean? = null,
+    @SerializedName("is_my_comment") val isMyComment: Boolean? = null,
     @SerializedName("likes") val likes: Int? = null,
     @SerializedName("coins") val coins: Int? = null,
     @SerializedName("reply_count") val replyCount: Int? = null,
@@ -191,6 +194,20 @@ data class UserListResponse(
     @SerializedName("list") val list: List<User>
 )
 
+// 用户详情（/api/users/:id/detail 和 /api/me）
+data class UserDetailResponse(
+    @SerializedName("user") val user: User,
+    @SerializedName("tags") val tags: List<String>? = null,
+    @SerializedName("coins") val coins: Int? = null,
+    @SerializedName("following_count") val followingCount: Int? = null,
+    @SerializedName("follower_count") val followerCount: Int? = null,
+    @SerializedName("post_count") val postCount: Int? = null,
+    @SerializedName("favorite_count") val favoriteCount: Int? = null,
+    @SerializedName("folders") val folders: List<Folder>? = null,
+    @SerializedName("posts") val posts: List<Post>? = null,
+    @SerializedName("favorites") val favorites: List<Post>? = null
+)
+
 // 应用市场相关模型
 data class App(
     @SerializedName("package_name") val packageName: String,
@@ -244,18 +261,18 @@ data class CategoryResponse(
 data class UploadAppRequest(
     @SerializedName("package_name") val packageName: String,
     @SerializedName("name") val name: String,
-    @SerializedName("icon_url") val iconUrl: String? = null,
+    @SerializedName("icon_url") val iconUrl: String,
     @SerializedName("version") val version: String,
     @SerializedName("version_code") val versionCode: Int,
     @SerializedName("size") val size: Long,
     @SerializedName("channel") val channel: String,
     @SerializedName("main_category") val mainCategory: String,
     @SerializedName("sub_category") val subCategory: String,
-    @SerializedName("screenshots") val screenshots: List<String>? = null,
+    @SerializedName("screenshots") val screenshots: List<String> = emptyList(),
     @SerializedName("description") val description: String? = null,
     @SerializedName("share_desc") val shareDesc: String? = null,
     @SerializedName("update_content") val updateContent: String? = null,
-    @SerializedName("developer_name") val developerName: String? = null,
+    @SerializedName("developer_name") val developer_name: String? = null,
     @SerializedName("ad_level") val adLevel: String = "none",
     @SerializedName("payment_type") val paymentType: String = "free",
     @SerializedName("operation_type") val operationType: String = "indie",
@@ -268,9 +285,15 @@ data class UploadTask(
     @SerializedName("name") val name: String,
     @SerializedName("icon_url") val iconUrl: String? = null,
     @SerializedName("version") val version: String,
+    @SerializedName("version_code") val versionCode: Int? = null,
+    @SerializedName("size") val size: Long? = null,
     @SerializedName("status") val status: String,
     @SerializedName("status_label") val statusLabel: String? = null,
-    @SerializedName("upload_time") val uploadTime: String? = null
+    @SerializedName("upload_time") val uploadTime: String? = null,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("download_url") val downloadUrl: String? = null,
+    @SerializedName("channel") val channel: String? = null,
+    @SerializedName("reject_reason") val rejectReason: String? = null
 )
 
 data class UploadTaskListResponse(
@@ -346,5 +369,28 @@ data class PicuiTokenData(
 data class PicuiTokenItem(
     @SerializedName("token") val token: String,
     @SerializedName("expired_at") val expiredAt: String?
+)
+
+// 通用下拉选项结构（应用上传相关接口返回）
+data class ValueLabelOption(
+    @SerializedName("value") val value: String,
+    @SerializedName("label") val label: String
+)
+
+data class HistoryItem(
+    @SerializedName("post") val post: Post,
+    @SerializedName("viewed_at") val viewedAt: String
+)
+
+data class HistoryListResponse(
+    @SerializedName("total") val total: Int,
+    @SerializedName("page") val page: Int,
+    @SerializedName("page_size") val pageSize: Int,
+    @SerializedName("list") val list: List<HistoryItem>?
+)
+
+data class FolderPostsResponse(
+    @SerializedName("folder") val folder: Folder,
+    @SerializedName("posts") val posts: PostListResponse
 )
 
